@@ -1,0 +1,9 @@
+torch 
+librosa 
+pyaudio 
+webrtcvad 
+numpy 
+matplotlib 
+scikit-learn 
+onnx 
+onnxruntime 

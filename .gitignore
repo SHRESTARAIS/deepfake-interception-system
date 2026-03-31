@@ -1,0 +1,7 @@
+data/
+models/*.pth
+models/*.onnx
+*.npy
+__pycache__/
+*.pyc
+.env
