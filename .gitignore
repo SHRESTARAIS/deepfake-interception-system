@@ -1,7 +1,57 @@
+# ============================================
+# AUDIO DATASETS — never commit these to Git
+# ============================================
+DS_10283_3336/
+asvspoof2019/
+demand_noise/
+wavefake/
+WaveFake/
+WaveFake-main/
+DEMAND/
 data/
-models/*.pth
-models/*.onnx
-*.npy
+
+# ============================================
+# Python cache and build artifacts
+# ============================================
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# ============================================
+# Virtual environment
+# ============================================
+venv/
+env/
 .env
+
+# ============================================
+# Model checkpoints and ONNX exports
+# ============================================
+*.pt
+*.pth
+*.onnx
+*.bin
+*.npy
+
+# ============================================
+# Jupyter notebook checkpoints
+# ============================================
+.ipynb_checkpoints/
+
+# ============================================
+# OS files
+# ============================================
+.DS_Store
+Thumbs.db
+
+# ============================================
+# Logs and outputs
+# ============================================
+logs/
+outputs/
+*.log
