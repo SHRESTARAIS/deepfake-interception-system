@@ -37,6 +37,17 @@ env/
 *.onnx
 *.bin
 *.npy
+!android_app/app/src/main/assets/deepfake_detector.onnx
+
+# ============================================
+# Android Build files & Gradle caches
+# ============================================
+.gradle/
+android_app/build/
+android_app/app/build/
+android_app/.gradle/
+android_app/.idea/
+android_app/*.iml
 
 # ============================================
 # Jupyter notebook checkpoints
@@ -44,14 +55,11 @@ env/
 .ipynb_checkpoints/
 
 # ============================================
-# OS files
+# OS files & logs
 # ============================================
 .DS_Store
 Thumbs.db
-
-# ============================================
-# Logs and outputs
-# ============================================
 logs/
 outputs/
 *.log
+data_contents.txt
