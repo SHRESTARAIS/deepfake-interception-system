@@ -1,5 +1,5 @@
 # ============================================
-# AUDIO DATASETS — never commit these to Git
+# AUDIO DATASETS & ZIP FILES — never commit to Git
 # ============================================
 DS_10283_3336/
 asvspoof2019/
@@ -9,6 +9,7 @@ WaveFake/
 WaveFake-main/
 DEMAND/
 data/
+*.zip
 
 # ============================================
 # Python cache and build artifacts
@@ -48,6 +49,9 @@ android_app/app/build/
 android_app/.gradle/
 android_app/.idea/
 android_app/*.iml
+local.properties
+android_app/local.properties
+.idea/
 
 # ============================================
 # Jupyter notebook checkpoints
@@ -63,3 +67,4 @@ logs/
 outputs/
 *.log
 data_contents.txt
+python
