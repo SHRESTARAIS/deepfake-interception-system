@@ -4,15 +4,20 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.os.Build
+import android.util.Log
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 class AudioProcessor(
     private val classifier: DeepfakeClassifier,
-    private val onResult: (probFake: Float) -> Unit
+    private val onResult: (result: DeepfakeClassifier.ClassificationResult?) -> Unit
 ) {
 
     private var audioRecord: AudioRecord? = null
@@ -24,41 +29,147 @@ class AudioProcessor(
     private val audioFormat = AudioFormat.ENCODING_PCM_16BIT
     private val chunkSize = 8000 // 1 second at 8kHz
 
+    private val historyBuffer = ArrayList<Float>()
+    private val historySize = 3 // 3-second sliding window
+
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Log.e("DeepfakeInterceptor", "Background coroutine exception caught safely: ${throwable.message}")
+    }
+
     @SuppressLint("MissingPermission")
     fun startListening() {
-        val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-        val bufferSize = maxOf(minBufferSize, chunkSize * 2)
+        historyBuffer.clear()
+        initializeAudioRecord()
 
-        audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-            sampleRate,
-            channelConfig,
-            audioFormat,
-            bufferSize
-        )
-
-        audioRecord?.startRecording()
-        isRecording = true
-
-        processingJob = CoroutineScope(Dispatchers.Default).launch {
+        processingJob = CoroutineScope(Dispatchers.Default + exceptionHandler).launch {
             val shortBuffer = ShortArray(chunkSize)
             val floatChunk = FloatArray(chunkSize)
 
             while (isActive && isRecording) {
-                var readSize = 0
-                while (readSize < chunkSize && isRecording) {
-                    val read = audioRecord?.read(shortBuffer, readSize, chunkSize - readSize) ?: 0
-                    if (read > 0) readSize += read
-                }
-
-                if (readSize == chunkSize) {
-                    for (i in 0 until chunkSize) {
-                        floatChunk[i] = shortBuffer[i] / 32768.0f
+                try {
+                    if (audioRecord == null || audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
+                        delay(300)
+                        initializeAudioRecord()
+                        continue
                     }
 
-                    val probFake = classifier.classifyAudioChunk(floatChunk)
-                    onResult(probFake)
+                    var readSize = 0
+                    var errorCount = 0
+
+                    while (readSize < chunkSize && isRecording && isActive) {
+                        val read = try {
+                            audioRecord?.read(shortBuffer, readSize, chunkSize - readSize) ?: 0
+                        } catch (e: Exception) {
+                            -1
+                        }
+
+                        if (read > 0) {
+                            readSize += read
+                        } else {
+                            errorCount++
+                            delay(50)
+                            if (errorCount > 10) {
+                                try {
+                                    audioRecord?.stop()
+                                    audioRecord?.release()
+                                } catch (e: Exception) {}
+                                audioRecord = null
+                                break
+                            }
+                        }
+                    }
+
+                    if (readSize == chunkSize) {
+                        var sum = 0.0f
+                        for (i in 0 until chunkSize) {
+                            val sample = shortBuffer[i] / 32768.0f
+                            floatChunk[i] = sample
+                            sum += sample
+                        }
+
+                        // 1. Remove DC Offset
+                        val mean = sum / chunkSize
+                        var maxAbs = 0.0f
+
+                        for (i in 0 until chunkSize) {
+                            val centered = floatChunk[i] - mean
+                            floatChunk[i] = centered
+                            if (abs(centered) > maxAbs) {
+                                maxAbs = abs(centered)
+                            }
+                        }
+
+                        // 2. Active Voiced Speech Activity Gating (maxAbs >= 0.05f)
+                        if (maxAbs >= 0.05f) {
+                            val rawResult = classifier.classifyAudioChunk(floatChunk)
+                            val rawFake = rawResult.probFake
+
+                            historyBuffer.add(rawFake)
+                            if (historyBuffer.size > historySize) {
+                                historyBuffer.removeAt(0)
+                            }
+
+                            val avgFakeInWindow = historyBuffer.average().toFloat()
+
+                            val windowResult = DeepfakeClassifier.ClassificationResult(
+                                probFake = avgFakeInWindow,
+                                realLogit = rawResult.realLogit,
+                                fakeLogit = rawResult.fakeLogit
+                            )
+
+                            Log.d("DeepfakeInterceptor", "Speech Frame -> maxAbs: $maxAbs | RawFake: $rawFake | AvgFake: $avgFakeInWindow")
+                            onResult(windowResult)
+                        }
+                    }
+                } catch (e: Throwable) {
+                    delay(300)
                 }
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun initializeAudioRecord() {
+        try {
+            audioRecord?.stop()
+            audioRecord?.release()
+        } catch (e: Exception) {}
+        audioRecord = null
+
+        val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+        val bufferSize = maxOf(minBufferSize, chunkSize * 2)
+
+        val audioSources = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            intArrayOf(
+                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                MediaRecorder.AudioSource.UNPROCESSED,
+                MediaRecorder.AudioSource.MIC,
+                MediaRecorder.AudioSource.DEFAULT,
+                MediaRecorder.AudioSource.VOICE_RECOGNITION
+            )
+        } else {
+            intArrayOf(
+                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                MediaRecorder.AudioSource.MIC,
+                MediaRecorder.AudioSource.DEFAULT,
+                MediaRecorder.AudioSource.VOICE_RECOGNITION
+            )
+        }
+
+        for (source in audioSources) {
+            try {
+                val record = AudioRecord(source, sampleRate, channelConfig, audioFormat, bufferSize)
+                if (record.state == AudioRecord.STATE_INITIALIZED) {
+                    record.startRecording()
+                    if (record.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                        audioRecord = record
+                        isRecording = true
+                        Log.d("DeepfakeInterceptor", "AudioRecord initialized at 8kHz with source: $source")
+                        break
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("DeepfakeInterceptor", "Failed audio source $source: ${e.message}")
             }
         }
     }
@@ -66,8 +177,11 @@ class AudioProcessor(
     fun stopListening() {
         isRecording = false
         processingJob?.cancel()
-        audioRecord?.stop()
-        audioRecord?.release()
+        try {
+            audioRecord?.stop()
+            audioRecord?.release()
+        } catch (e: Exception) {}
         audioRecord = null
+        historyBuffer.clear()
     }
 }

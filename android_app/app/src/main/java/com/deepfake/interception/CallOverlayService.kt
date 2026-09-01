@@ -10,8 +10,8 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import android.view.Gravity
-import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
@@ -34,18 +34,34 @@ class CallOverlayService : Service() {
         classifier = DeepfakeClassifier(this)
         setupOverlayWindow()
 
-        audioProcessor = AudioProcessor(classifier) { probFake ->
-            val percentage = (probFake * 100).toInt()
-            if (probFake > 0.5f) {
+        audioProcessor = AudioProcessor(classifier) { result ->
+            if (result == null) {
+                // Silence or ambient room noise -> Blue Monitoring Banner
                 updateOverlayUI(
-                    text = "🚨 WARNING: SUSPECTED DEEPFAKE VOICE ($percentage%)",
-                    backgroundColor = Color.parseColor("#D32F2F") // RED
+                    text = "🛡️ Monitoring Voice Audio...",
+                    backgroundColor = Color.parseColor("#1976D2") // BLUE
                 )
+                Log.d("DeepfakeInterceptor", "[USB_CABLE_STREAM] STATUS:MONITORING:Monitoring Voice Audio...")
             } else {
-                updateOverlayUI(
-                    text = "🛡️ REAL VOICE VERIFIED (${100 - percentage}%)",
-                    backgroundColor = Color.parseColor("#388E3C") // GREEN
-                )
+                val probFake = result.probFake
+                val percentage = (probFake * 100).toInt()
+
+                if (probFake > 0.50f) {
+                    val alertMsg = "🚨 WARNING: SUSPECTED DEEPFAKE VOICE ($percentage%)"
+                    updateOverlayUI(
+                        text = alertMsg,
+                        backgroundColor = Color.parseColor("#D32F2F") // RED
+                    )
+                    Log.d("DeepfakeInterceptor", "[USB_CABLE_STREAM] ALERT:DEEPFAKE:$percentage:$alertMsg")
+                } else {
+                    val realPct = 100 - percentage
+                    val okMsg = "🛡️ REAL VOICE VERIFIED ($realPct%)"
+                    updateOverlayUI(
+                        text = okMsg,
+                        backgroundColor = Color.parseColor("#388E3C") // GREEN
+                    )
+                    Log.d("DeepfakeInterceptor", "[USB_CABLE_STREAM] ALERT:REAL:$realPct:$okMsg")
+                }
             }
         }
 
@@ -70,7 +86,7 @@ class CallOverlayService : Service() {
         }
 
         val textView = TextView(this).apply {
-            text = "🛡️ Initializing Deepfake Interceptor..."
+            text = "🛡️ Monitoring Voice Audio..."
             setTextColor(Color.WHITE)
             textSize = 16f
             setPadding(32, 24, 32, 24)

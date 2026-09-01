@@ -6,6 +6,7 @@ plugins {
 android {
     namespace = "com.deepfake.interception"
     compileSdk = 34
+    buildToolsVersion = "34.0.0"
 
     defaultConfig {
         applicationId = "com.deepfake.interception"

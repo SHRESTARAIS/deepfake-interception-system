@@ -9,7 +9,7 @@ import numpy as np
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-# 1. Lightweight Audio Deepfake Classifier Model (LCNN Architecture)
+# 1. Lightweight Audio Deepfake Classifier Model (1D-LCNN Architecture)
 class AudioDeepfakeClassifier(nn.Module):
     def __init__(self):
         super(AudioDeepfakeClassifier, self).__init__()
@@ -106,9 +106,21 @@ def train_model(data_path="data/augmented/aug_audio.npy", label_path="data/augme
     print("Model saved to models/deepfake_detector.pth!")
 
     # Export to ONNX for CPU real-time inference
-    dummy_input = torch.randn(1, 1, 8000).to(device)
-    torch.onnx.export(model, dummy_input, "models/deepfake_detector.onnx", input_names=["input"], output_names=["output"])
-    print("Exported ONNX model to models/deepfake_detector.onnx!")
+    try:
+        dummy_input = torch.randn(1, 1, 8000).to(device)
+        torch.onnx.export(
+            model, 
+            dummy_input, 
+            "models/deepfake_detector.onnx", 
+            input_names=["input"], 
+            output_names=["output"],
+            opset_version=14,
+            do_constant_folding=True
+        )
+        print("Exported ONNX model to models/deepfake_detector.onnx!")
+    except Exception as e:
+        print(f"ONNX Export Warning: {e}")
+        print("Existing model models/deepfake_detector.onnx remains active.")
 
 if __name__ == "__main__":
     train_model()

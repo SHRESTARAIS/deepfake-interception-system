@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Figure 5.4 Flow Chart - Ultra High Resolution (No Blur)</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #ffffff; margin: 20px; text-align: center; }
+        .instructions { background: #ebf8ff; border: 2px solid #3182ce; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; color: #2b6cb0; font-size: 16px; }
+        .svg-container { display: flex; justify-content: center; background: #ffffff; padding: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="instructions">
+        🔍 ULTRA HIGH-RESOLUTION FLOW CHART (Figure 5.4)<br>
+        Instructions: Press <b>Win + Shift + S</b> &rarr; Drag over this sharp flowchart &rarr; Paste (<b>Ctrl + V</b>) into MS Word!<br>
+        <i>This vector version will remain 100% crystal clear and crisp in your Word Report without any blur!</i>
+    </div>
+
+    <div class="svg-container">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 1200" width="700" height="1200" style="background: #ffffff;">
+
+          <!-- Start Node (Oval) -->
+          <g transform="translate(350, 50)">
+            <ellipse cx="0" cy="0" rx="180" ry="32" fill="#e2e8f0" stroke="#1a202c" stroke-width="2.5"/>
+            <text x="0" y="6" font-size="16" font-weight="bold" text-anchor="middle" fill="#000000">Start System Execution</text>
+          </g>
+
+          <!-- Arrow 1 -->
+          <line x1="350" y1="82" x2="350" y2="128" stroke="#000000" stroke-width="2.5"/>
+          <polygon points="350,138 343,123 357,123" fill="#000000"/>
+
+          <!-- Step 1: Initialize (Rectangle) -->
+          <g transform="translate(350, 175)">
+            <rect x="-240" y="-35" width="480" height="70" rx="8" fill="#ffffff" stroke="#000000" stroke-width="2.5"/>
+            <text x="0" y="-5" font-size="15" font-weight="bold" text-anchor="middle" fill="#000000">Initialize AudioRecord 8kHz PCM &amp;</text>
+            <text x="0" y="18" font-size="15" font-weight="bold" text-anchor="middle" fill="#000000">Load ONNX Model Binary</text>
+          </g>
+
+          <!-- Arrow 2 -->
+          <line x1="350" y1="210" x2="350" y2="256" stroke="#000000" stroke-width="2.5"/>
+          <polygon points="350,266 343,251 357,251" fill="#000000"/>
+
+          <!-- Step 2: Read Audio Chunk -->
+          <g transform="translate(350, 300)">
+            <rect x="-240" y="-35" width="480" height="70" rx="8" fill="#ffffff" stroke="#000000" stroke-width="2.5"/>
+            <text x="0" y="-5" font-size="15" font-weight="bold" text-anchor="middle" fill="#000000">Read 1-Second Audio Buffer</text>
+            <text x="0" y="18" font-size="15" font-weight="bold" text-anchor="middle" fill="#000000">(8,000 PCM Samples)</text>
+          </g>
+
+          <!-- Arrow 3 -->
+          <line x1="350" y1="335" x2="350" y2="381" stroke="#000000" stroke-width="2.5"/>
+          <polygon points="350,391 343,376 357,376" fill="#000000"/>
+
+          <!-- Step 3: DC Offset -->
+          <g transform="translate(350, 425)">
+            <rect x="-240" y="-35" width="480" height="70" rx="8" fill="#ffffff" stroke="#000000" stroke-width="2.5"/>
+            <text x="0" y="-5" font-size="15" font-weight="bold" text-anchor="middle" fill="#000000">Apply DC-Offset Removal -</text>
+            <text x="0" y="18" font-size="15" font-weight="bold" text-anchor="middle" fill="#000000">Subtract Mean Amplitude</text>
+          </g>
+
+          <!-- Arrow 4 -->
+          <line x1="350" y1="460" x2="350" y2="506" stroke="#000000" stroke-width="2.5"/>
+          <polygon points="350,516 343,501 357,501" fill="#000000"/>
+
+          <!-- Decision 1: Energy Gate (Diamond) -->
+          <g transform="translate(350, 570)">
+            <polygon points="0,-50 170,0 0,50 -170,0" fill="#ffffff" stroke="#000000" stroke-width="2.5"/>
+            <text x="0" y="-5" font-size="14" font-weight="bold" text-anchor="middle" fill="#000000">Speech Energy</text>
+            <text x="0" y="15" font-size="14" font-weight="bold" text-anchor="middle" fill="#000000">maxAbs &gt;= 0.05f?</text>
+          </g>
+
+          <!-- Decision 1 Branch NO (Silence) -> Loop back left -->
+          <line x1="180" y1="570" x2="60" y2="570" stroke="#000000" stroke-width="2.5"/>
+          <line x1="60" y1="570" x2="60" y2="300" stroke="#000000" stroke-width="2.5"/>
+          <line x1="60" y1="300" x2="100" y2="300" stroke="#000000" stroke-width="2.5"/>
+          <polygon points="110,300 95,293 95,307" fill="#000000"/>
+          <text x="120" y="560" font-size="13" font-weight="bold" fill="#c53030">No (Silence: Retain UI)</text>
+
+          <!-- Decision 1 Branch YES (Speech) -> Continue Down -->
+          <line x1="350" y1="620" x2="350" y2="656" stroke="#000000" stroke-width="2.5"/>
+          <polygon points="350,666 343,651 357,651" fill="#000000"/>
+          <text x="365" y="640" font-size="13" font-weight="bold" fill="#2b6cb0">Yes (Speech)</text>
+
+          <!-- Step 4: ONNX Inference -->
+          <g transform="translate(350, 700)">
+            <rect x="-240" y="-35" width="480" height="70" rx="8" fill="#ffffff" stroke="#000000" stroke-width="2.5"/>
+            <text x="0" y="-5" font-size="15" font-weight="bold" text-anchor="middle" fill="#000000">Execute 1D-LCNN ONNX Engine Inference</text>
+            <text x="0" y="18" font-size="14" text-anchor="middle" fill="#4a5568">(Inference Latency &lt; 25 ms)</text>
+          </g>
+
+          <!-- Arrow 5 -->
+          <line x1="350" y1="735" x2="350" y2="781" stroke="#000000" stroke-width="2.5"/>
+          <polygon points="350,791 343,776 357,776" fill="#000000"/>
+
+          <!-- Step 5: Rolling Average -->
+          <g transform="translate(350, 825)">
+            <rect x="-240" y="-35" width="480" height="70" rx="8" fill="#ffffff" stroke="#000000" stroke-width="2.5"/>
+            <text x="0" y="-5" font-size="15" font-weight="bold" text-anchor="middle" fill="#000000">Calculate 3-Second Rolling Window Average</text>
+            <text x="0" y="18" font-size="14" text-anchor="middle" fill="#4a5568">(historyBuffer.average())</text>
+          </g>
+
+          <!-- Arrow 6 -->
+          <line x1="350" y1="860" x2="350" y2="906" stroke="#000000" stroke-width="2.5"/>
+          <polygon points="350,916 343,901 357,901" fill="#000000"/>
+
+          <!-- Decision 2: Threshold Check (Diamond) -->
+          <g transform="translate(350, 965)">
+            <polygon points="0,-48 180,0 0,48 -180,0" fill="#ffffff" stroke="#000000" stroke-width="2.5"/>
+            <text x="0" y="5" font-size="15" font-weight="bold" text-anchor="middle" fill="#000000">Average ProbFake &gt; 0.50?</text>
+          </g>
+
+          <!-- Decision 2 Branch YES -> Left RED Overlay -->
+          <line x1="170" y1="965" x2="160" y2="965" stroke="#000000" stroke-width="2.5"/>
+          <line x1="160" y1="965" x2="160" y2="1035" stroke="#000000" stroke-width="2.5"/>
+          <polygon points="160,1045 153,1030 167,1030" fill="#000000"/>
+          <text x="100" y="955" font-size="13" font-weight="bold" fill="#c53030">Yes (Fake)</text>
+
+          <g transform="translate(160, 1080)">
+            <rect x="-130" y="-35" width="260" height="70" rx="8" fill="#fff5f5" stroke="#e53e3e" stroke-width="2.5"/>
+            <text x="0" y="-5" font-size="13" font-weight="bold" text-anchor="middle" fill="#c53030">Set Overlay Banner RED:</text>
+            <text x="0" y="15" font-size="12" font-weight="bold" text-anchor="middle" fill="#c53030">SUSPECTED DEEPFAKE</text>
+          </g>
+
+          <!-- Decision 2 Branch NO -> Right GREEN Overlay -->
+          <line x1="530" y1="965" x2="540" y2="965" stroke="#000000" stroke-width="2.5"/>
+          <line x1="540" y1="965" x2="540" y2="1035" stroke="#000000" stroke-width="2.5"/>
+          <polygon points="540,1045 533,1030 547,1030" fill="#000000"/>
+          <text x="550" y="955" font-size="13" font-weight="bold" fill="#276749">No (Real)</text>
+
+          <g transform="translate(540, 1080)">
+            <rect x="-130" y="-35" width="260" height="70" rx="8" fill="#f0fff4" stroke="#38a169" stroke-width="2.5"/>
+            <text x="0" y="-5" font-size="13" font-weight="bold" text-anchor="middle" fill="#276749">Set Overlay Banner GREEN:</text>
+            <text x="0" y="15" font-size="12" font-weight="bold" text-anchor="middle" fill="#276749">REAL HUMAN VOICE VERIFIED</text>
+          </g>
+
+          <!-- Convergence Line to USB Stream -->
+          <line x1="160" y1="1115" x2="160" y2="1140" stroke="#000000" stroke-width="2.5"/>
+          <line x1="540" y1="1115" x2="540" y2="1140" stroke="#000000" stroke-width="2.5"/>
+          <line x1="160" y1="1140" x2="540" y2="1140" stroke="#000000" stroke-width="2.5"/>
+          <line x1="350" y1="1140" x2="350" y2="1165" stroke="#000000" stroke-width="2.5"/>
+          <polygon points="350,1175 343,1160 357,1160" fill="#000000"/>
+
+          <!-- Final USB Telemetry & Loop Step -->
+          <g transform="translate(350, 1205)">
+            <rect x="-240" y="-30" width="480" height="60" rx="8" fill="#edf2f7" stroke="#2b6cb0" stroke-width="2.5"/>
+            <text x="0" y="-2" font-size="14" font-weight="bold" text-anchor="middle" fill="#2b6cb0">Write ADB Logcat &amp; Stream to USB Dashboard (Port 5001)</text>
+            <text x="0" y="18" font-size="13" font-style="italic" text-anchor="middle" fill="#4a5568">Loop next 1-second audio chunk until call ends</text>
+          </g>
+
+        </svg>
+    </div>
+
+</body>
+</html>
