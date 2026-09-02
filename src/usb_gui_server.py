@@ -695,14 +695,16 @@ HTML_TEMPLATE = """
                 const bannerIcon = document.getElementById('bannerIcon');
                 const bannerText = document.getElementById('bannerText');
 
-                const realPct = (data.prob_real * 100).toFixed(1);
-                const fakePct = (data.prob_fake * 100).toFixed(1);
+                const isMonitoring = (data.status === 'MONITORING');
+
+                const realPct = isMonitoring ? '0.0' : (data.prob_real * 100).toFixed(1);
+                const fakePct = isMonitoring ? '0.0' : (data.prob_fake * 100).toFixed(1);
 
                 document.getElementById('fakeProbVal').innerText = `${fakePct}%`;
                 document.getElementById('realProbVal').innerText = `${realPct}%`;
 
                 if (chartInstance) {
-                    chartInstance.data.datasets[0].data = [realPct, fakePct];
+                    chartInstance.data.datasets[0].data = [isMonitoring ? 0 : parseFloat(realPct), isMonitoring ? 0 : parseFloat(fakePct)];
                     chartInstance.update();
                 }
 
