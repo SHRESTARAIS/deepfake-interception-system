@@ -40,7 +40,7 @@ def check_adb_device():
         return False
 
 def adb_stream_thread():
-    """Background worker thread reading ADB Logcat from Android phone via USB cable"""
+    """Background worker thread reading ADB Logcat from Android phone over Wireless stream"""
     global usb_state
     
     # Clear previous old logcat buffer on server start
@@ -122,7 +122,7 @@ def adb_stream_thread():
 
                     usb_state["last_update"] = time.time()
         except Exception as e:
-            print(f"ADB logcat stream error: {e}")
+            print(f"Wireless logcat stream error: {e}")
             time.sleep(2)
 
 # Start background thread
@@ -134,7 +134,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USB Cable Telephony Deepfake Interceptor Dashboard</title>
+    <title>REAL-TIME AUDIO DEEPFAKE INTERCEPTION</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -203,8 +203,8 @@ HTML_TEMPLATE = """
 
         .brand-title {
             font-weight: 800;
-            font-size: 1.25rem;
-            letter-spacing: -0.02em;
+            font-size: 1.1rem;
+            letter-spacing: -0.01em;
         }
 
         .menu-label {
@@ -254,7 +254,7 @@ HTML_TEMPLATE = """
         .page-header h2 { font-size: 1.9rem; font-weight: 800; }
         .page-header p { color: var(--text-muted); font-size: 0.95rem; margin-top: 0.25rem; }
 
-        /* USB Status Indicator Pill */
+        /* Status Indicator Pill */
         .usb-status-pill {
             display: flex;
             align-items: center;
@@ -427,12 +427,12 @@ HTML_TEMPLATE = """
     <!-- Sidebar Navigation -->
     <div class="sidebar">
         <div class="brand">
-            <div class="brand-icon"><i class="fa-solid fa-plug"></i></div>
-            <div class="brand-title">USB Telephony AI</div>
+            <div class="brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="brand-title">DEEPFAKE INTERCEPTOR</div>
         </div>
 
         <div class="menu-label">Live Monitor Navigation</div>
-        <div class="nav-item active" onclick="switchNav('monitor')"><i class="fa-solid fa-desktop"></i> USB Live Telephony Monitor</div>
+        <div class="nav-item active" onclick="switchNav('monitor')"><i class="fa-solid fa-desktop"></i> Live Telephony Monitor</div>
         <div class="nav-item" onclick="switchNav('benchmarks')"><i class="fa-solid fa-microchip"></i> Model Benchmarks</div>
         <div class="nav-item" onclick="switchNav('history')"><i class="fa-solid fa-clock-rotate-left"></i> History Audit Log</div>
         <div class="nav-item" onclick="switchNav('settings')"><i class="fa-solid fa-gear"></i> System Hardware Settings</div>
@@ -448,18 +448,18 @@ HTML_TEMPLATE = """
     <div class="main-wrapper">
         <div class="top-bar">
             <div class="page-header">
-                <h2 id="pageTitle">USB Cable Telephony Deepfake Interceptor</h2>
+                <h2 id="pageTitle">REAL-TIME AUDIO DEEPFAKE INTERCEPTION</h2>
                 <p id="pageSubTitle">Real-Time Mobile In-Call Audio Stream Monitoring Dashboard</p>
             </div>
             
-            <!-- USB Connection Status Pill -->
+            <!-- Connection Status Pill -->
             <div id="usbStatusPill" class="usb-status-pill usb-disconnected">
                 <div class="usb-dot"></div>
-                <span id="usbStatusText">Checking USB Cable Connection...</span>
+                <span id="usbStatusText">Awaiting Wireless Telephony Connection...</span>
             </div>
         </div>
 
-        <!-- VIEW 1: LIVE USB MONITOR -->
+        <!-- VIEW 1: LIVE MONITOR -->
         <div id="viewMonitor" class="dashboard-grid">
             <!-- Left Panel: Live Stream Alert & Waveform -->
             <div class="card">
@@ -493,7 +493,7 @@ HTML_TEMPLATE = """
                     </div>
                     <div class="metric-box">
                         <div class="metric-label">Connection Mode</div>
-                        <div class="metric-val" style="color: var(--primary);">USB Cable ADB</div>
+                        <div class="metric-val" style="color: var(--primary);">Wireless Stream</div>
                     </div>
                     <div class="metric-box">
                         <div class="metric-label">Telephony Codec</div>
@@ -570,7 +570,7 @@ HTML_TEMPLATE = """
                     </thead>
                     <tbody id="historyTableBody">
                         <tr>
-                            <td colspan="4" style="text-align: center; color: var(--text-muted);">No call events logged in this USB stream session yet.</td>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted);">No call events logged in this stream session yet.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -674,7 +674,7 @@ HTML_TEMPLATE = """
         }
         setInterval(() => animateWaveform(true), 200);
 
-        // Real-Time USB Cable Polling
+        // Real-Time Wireless Polling
         async function pollUsbStatus() {
             try {
                 const res = await fetch('/usb_status');
@@ -685,10 +685,10 @@ HTML_TEMPLATE = """
 
                 if (data.connected) {
                     pill.className = 'usb-status-pill usb-connected';
-                    pillText.innerText = 'USB Cable Connected (Android Phone)';
+                    pillText.innerText = 'Wireless Telephony Stream Connected (Android Phone)';
                 } else {
                     pill.className = 'usb-status-pill usb-disconnected';
-                    pillText.innerText = 'Plug USB Cable into Phone...';
+                    pillText.innerText = 'Awaiting Wireless Telephony Connection...';
                 }
 
                 const banner = document.getElementById('liveBanner');
@@ -745,7 +745,7 @@ HTML_TEMPLATE = """
                     });
                 }
             } catch (e) {
-                console.log("USB polling error:", e);
+                console.log("Stream polling error:", e);
             }
         }
 
@@ -785,7 +785,7 @@ def usb_status():
 
 if __name__ == "__main__":
     print("==========================================================")
-    print("LAUNCHING REAL-TIME USB CABLE TELEPHONY GUI DASHBOARD")
+    print("LAUNCHING REAL-TIME AUDIO DEEPFAKE INTERCEPTION DASHBOARD")
     print("==========================================================")
     print("Open your browser and navigate to: http://127.0.0.1:5001")
     print("==========================================================")
