@@ -30,19 +30,7 @@ class CallOverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                startForeground(
-                    1001,
-                    createNotification("Monitoring active call..."),
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                )
-            } else {
-                startForeground(1001, createNotification("Monitoring active call..."))
-            }
-        } catch (e: Exception) {
-            Log.e("DeepfakeInterceptor", "startForeground Exception caught safely: ${e.message}")
-        }
+        startForegroundNotification("🛡️ Monitoring Voice Audio...")
 
         try {
             classifier = DeepfakeClassifier(this)
@@ -54,7 +42,7 @@ class CallOverlayService : Service() {
                         text = "🛡️ Monitoring Voice Audio...",
                         backgroundColor = Color.parseColor("#1976D2") // BLUE
                     )
-                    Log.d("DeepfakeInterceptor", "[USB_CABLE_STREAM] STATUS:MONITORING:Monitoring Voice Audio...")
+                    Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] STATUS:MONITORING:Monitoring Voice Audio...")
                 } else {
                     val probFake = result.probFake
                     val percentage = (probFake * 100).toInt()
@@ -65,15 +53,15 @@ class CallOverlayService : Service() {
                             text = alertMsg,
                             backgroundColor = Color.parseColor("#D32F2F") // RED
                         )
-                        Log.d("DeepfakeInterceptor", "[USB_CABLE_STREAM] ALERT:DEEPFAKE:$percentage:$alertMsg")
+                        Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] ALERT:DEEPFAKE:$percentage:$alertMsg")
                     } else {
                         val realPct = 100 - percentage
-                        val okMsg = "🛡️ REAL VOICE VERIFIED ($realPct%)"
+                        val okMsg = "🛡️ REAL HUMAN VOICE VERIFIED ($realPct%)"
                         updateOverlayUI(
                             text = okMsg,
                             backgroundColor = Color.parseColor("#388E3C") // GREEN
                         )
-                        Log.d("DeepfakeInterceptor", "[USB_CABLE_STREAM] ALERT:REAL:$realPct:$okMsg")
+                        Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] ALERT:REAL:$realPct:$okMsg")
                     }
                 }
             }
@@ -81,6 +69,30 @@ class CallOverlayService : Service() {
             audioProcessor.startListening()
         } catch (t: Throwable) {
             Log.e("DeepfakeInterceptor", "CallOverlayService onCreate Exception: ${t.message}")
+        }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        startForegroundNotification("🛡️ Active In-Call Deepfake Interception")
+        if (overlayView == null) {
+            setupOverlayWindow()
+        }
+        return START_STICKY
+    }
+
+    private fun startForegroundNotification(text: String) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                startForeground(
+                    1001,
+                    createNotification(text),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                )
+            } else {
+                startForeground(1001, createNotification(text))
+            }
+        } catch (e: Exception) {
+            Log.e("DeepfakeInterceptor", "startForeground Exception: ${e.message}")
         }
     }
 
@@ -93,25 +105,33 @@ class CallOverlayService : Service() {
 
             windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
+            val windowType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else
+                WindowManager.LayoutParams.TYPE_PHONE
+
+            val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+
             val params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                else
-                    WindowManager.LayoutParams.TYPE_PHONE,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                windowType,
+                flags,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                y = 100
+                y = 80 // Positioned at top of screen over WhatsApp/Phone call header
             }
 
             val textView = TextView(this).apply {
                 text = "🛡️ Monitoring Voice Audio..."
                 setTextColor(Color.WHITE)
                 textSize = 16f
-                setPadding(32, 24, 32, 24)
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setPadding(36, 28, 36, 28)
                 setBackgroundColor(Color.parseColor("#1976D2")) // BLUE
                 gravity = Gravity.CENTER
             }
@@ -119,6 +139,7 @@ class CallOverlayService : Service() {
             statusTextView = textView
             overlayView = textView
             windowManager.addView(overlayView, params)
+            Log.i("DeepfakeInterceptor", "Overlay window added successfully to screen top!")
         } catch (e: Exception) {
             Log.e("DeepfakeInterceptor", "Error adding overlay window: ${e.message}")
         }
@@ -136,7 +157,9 @@ class CallOverlayService : Service() {
         audioProcessor.stopListening()
         classifier.close()
         if (overlayView != null) {
-            windowManager.removeView(overlayView)
+            try {
+                windowManager.removeView(overlayView)
+            } catch (e: Exception) {}
         }
     }
 

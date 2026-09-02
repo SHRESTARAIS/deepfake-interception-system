@@ -4,6 +4,7 @@ import time
 import json
 import subprocess
 import threading
+import re
 from flask import Flask, render_template_string, Response, jsonify
 
 app = Flask(__name__)
@@ -51,11 +52,11 @@ def adb_stream_thread():
     while True:
         usb_state["connected"] = check_adb_device()
         if not usb_state["connected"]:
-            time.sleep(2)
+            time.sleep(1.5)
             continue
 
-        # -T 1 tells adb logcat to ONLY read brand new log lines created from this second forward!
-        cmd = [ADB_PATH, "logcat", "-T", "1", "-v", "time", "-s", "DeepfakeInterceptor:V"]
+        # Listen to all DeepfakeInterceptor log tags
+        cmd = [ADB_PATH, "logcat", "-v", "time", "DeepfakeInterceptor:V", "*:S"]
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
 
         try:
@@ -69,23 +70,23 @@ def adb_stream_thread():
                     usb_state["prob_fake"] = 0.0
                     usb_state["prob_real"] = 1.0
                     usb_state["is_fake"] = False
-                elif "[USB_CABLE_STREAM]" in line_str or "Speech Frame" in line_str:
+                elif "[USB_CABLE_STREAM]" in line_str or "ALERT:" in line_str or "status=" in line_str:
                     timestamp = time.strftime("%H:%M:%S")
 
-                    if "DEEPFAKE" in line_str or "ALERT:DEEPFAKE" in line_str:
-                        pct = 98.4
-                        try:
-                            parts = line_str.split(":")
-                            for p in parts:
-                                val_str = p.replace("%", "").replace(")", "").strip()
-                                if val_str.replace(".", "", 1).isdigit():
-                                    pct = float(val_str)
-                        except Exception:
-                            pass
+                    if "DEEPFAKE" in line_str or "ALERT:DEEPFAKE" in line_str or "status=FAKE" in line_str:
+                        pct = 99.3
+                        # Extract exact percentage if present
+                        match = re.search(r'([\d\.]+)%', line_str)
+                        if match:
+                            pct = float(match.group(1))
+                        else:
+                            prob_match = re.search(r'probFake=([\d\.]+)', line_str)
+                            if prob_match:
+                                pct = float(prob_match.group(1)) * 100.0
 
                         usb_state["is_fake"] = True
                         usb_state["prob_fake"] = pct / 100.0
-                        usb_state["prob_real"] = 1.0 - (pct / 100.0)
+                        usb_state["prob_real"] = max(0.0, 1.0 - (pct / 100.0))
                         usb_state["status"] = "ALERT"
                         usb_state["message"] = f"WARNING: SUSPECTED DEEPFAKE VOICE ({pct:.1f}%)"
                         usb_state["logs"].insert(0, {
@@ -94,20 +95,19 @@ def adb_stream_thread():
                             "msg": f"🚨 SUSPECTED DEEPFAKE VOICE ({pct:.1f}%)",
                             "prob": f"{pct:.1f}%"
                         })
-                    elif "REAL" in line_str or "ALERT:REAL" in line_str:
+                    elif "REAL" in line_str or "ALERT:REAL" in line_str or "status=REAL" in line_str:
                         pct = 99.8
-                        try:
-                            parts = line_str.split(":")
-                            for p in parts:
-                                val_str = p.replace("%", "").replace(")", "").strip()
-                                if val_str.replace(".", "", 1).isdigit():
-                                    pct = float(val_str)
-                        except Exception:
-                            pass
+                        match = re.search(r'([\d\.]+)%', line_str)
+                        if match:
+                            pct = float(match.group(1))
+                        else:
+                            prob_match = re.search(r'probFake=([\d\.]+)', line_str)
+                            if prob_match:
+                                pct = (1.0 - float(prob_match.group(1))) * 100.0
 
                         usb_state["is_fake"] = False
                         usb_state["prob_real"] = pct / 100.0
-                        usb_state["prob_fake"] = 1.0 - (pct / 100.0)
+                        usb_state["prob_fake"] = max(0.0, 1.0 - (pct / 100.0))
                         usb_state["status"] = "VERIFIED"
                         usb_state["message"] = f"REAL HUMAN VOICE VERIFIED ({pct:.1f}%)"
                         usb_state["logs"].insert(0, {
@@ -747,7 +747,7 @@ HTML_TEMPLATE = """
             }
         }
 
-        setInterval(pollUsbStatus, 800);
+        setInterval(pollUsbStatus, 500);
     </script>
 </body>
 </html>
@@ -771,8 +771,8 @@ def reset_state():
 @app.route("/usb_status")
 def usb_status():
     global usb_state
-    # Freshness Timeout: If no new event in last 5 seconds, revert to MONITORING state (0% Fake)
-    if time.time() - usb_state.get("last_update", 0) > 5.0:
+    # Freshness Timeout: If no new event in last 6 seconds, revert to MONITORING state (0% Fake)
+    if time.time() - usb_state.get("last_update", 0) > 6.0:
         usb_state["status"] = "MONITORING"
         usb_state["message"] = "🛡️ Monitoring Voice Audio..."
         usb_state["prob_fake"] = 0.0

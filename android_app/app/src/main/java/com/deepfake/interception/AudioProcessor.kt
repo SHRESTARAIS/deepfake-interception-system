@@ -39,6 +39,7 @@ class AudioProcessor(
     @SuppressLint("MissingPermission")
     fun startListening() {
         historyBuffer.clear()
+        isRecording = true
         initializeAudioRecord()
 
         processingJob = CoroutineScope(Dispatchers.Default + exceptionHandler).launch {
@@ -48,7 +49,7 @@ class AudioProcessor(
             while (isActive && isRecording) {
                 try {
                     if (audioRecord == null || audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
-                        delay(300)
+                        delay(200)
                         initializeAudioRecord()
                         continue
                     }
@@ -67,8 +68,8 @@ class AudioProcessor(
                             readSize += read
                         } else {
                             errorCount++
-                            delay(50)
-                            if (errorCount > 10) {
+                            delay(40)
+                            if (errorCount > 8) {
                                 try {
                                     audioRecord?.stop()
                                     audioRecord?.release()
@@ -99,11 +100,11 @@ class AudioProcessor(
                             }
                         }
 
-                        // 2. Active Voiced Speech Activity Gating (maxAbs >= 0.005f)
-                        if (maxAbs >= 0.005f) {
+                        // 2. Active Voiced Speech Activity Gating (maxAbs >= 0.003f)
+                        if (maxAbs >= 0.003f) {
                             // Peak normalization if signal is low volume
-                            if (maxAbs < 0.10f) {
-                                val scaleFactor = 0.10f / maxAbs
+                            if (maxAbs < 0.12f && maxAbs > 0.0f) {
+                                val scaleFactor = 0.12f / maxAbs
                                 for (i in 0 until chunkSize) {
                                     floatChunk[i] *= scaleFactor
                                 }
@@ -125,14 +126,15 @@ class AudioProcessor(
                                 fakeLogit = rawResult.fakeLogit
                             )
 
-                            val verdict = if (avgFakeInWindow > 0.50f) "FAKE" else "REAL"
-                            Log.v("DeepfakeInterceptor", "[USB_CABLE_STREAM] status=$verdict, probFake=$avgFakeInWindow")
                             Log.d("DeepfakeInterceptor", "Speech Frame -> maxAbs: $maxAbs | RawFake: $rawFake | AvgFake: $avgFakeInWindow")
                             onResult(windowResult)
+                        } else {
+                            // Silence / Ambient Room Noise
+                            onResult(null)
                         }
                     }
                 } catch (e: Throwable) {
-                    delay(300)
+                    delay(200)
                 }
             }
         }
@@ -152,8 +154,8 @@ class AudioProcessor(
         val audioSources = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             intArrayOf(
                 MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                MediaRecorder.AudioSource.UNPROCESSED,
                 MediaRecorder.AudioSource.MIC,
+                MediaRecorder.AudioSource.UNPROCESSED,
                 MediaRecorder.AudioSource.DEFAULT,
                 MediaRecorder.AudioSource.VOICE_RECOGNITION
             )
@@ -174,7 +176,7 @@ class AudioProcessor(
                     if (record.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                         audioRecord = record
                         isRecording = true
-                        Log.d("DeepfakeInterceptor", "AudioRecord initialized at 8kHz with source: $source")
+                        Log.i("DeepfakeInterceptor", "AudioRecord initialized successfully at 8kHz with source: $source")
                         break
                     }
                 }
