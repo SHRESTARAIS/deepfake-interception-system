@@ -99,8 +99,16 @@ class AudioProcessor(
                             }
                         }
 
-                        // 2. Active Voiced Speech Activity Gating (maxAbs >= 0.05f)
-                        if (maxAbs >= 0.05f) {
+                        // 2. Active Voiced Speech Activity Gating (maxAbs >= 0.005f)
+                        if (maxAbs >= 0.005f) {
+                            // Peak normalization if signal is low volume
+                            if (maxAbs < 0.10f) {
+                                val scaleFactor = 0.10f / maxAbs
+                                for (i in 0 until chunkSize) {
+                                    floatChunk[i] *= scaleFactor
+                                }
+                            }
+
                             val rawResult = classifier.classifyAudioChunk(floatChunk)
                             val rawFake = rawResult.probFake
 
@@ -117,6 +125,8 @@ class AudioProcessor(
                                 fakeLogit = rawResult.fakeLogit
                             )
 
+                            val verdict = if (avgFakeInWindow > 0.50f) "FAKE" else "REAL"
+                            Log.v("DeepfakeInterceptor", "[USB_CABLE_STREAM] status=$verdict, probFake=$avgFakeInWindow")
                             Log.d("DeepfakeInterceptor", "Speech Frame -> maxAbs: $maxAbs | RawFake: $rawFake | AvgFake: $avgFakeInWindow")
                             onResult(windowResult)
                         }
