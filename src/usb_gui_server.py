@@ -23,7 +23,7 @@ def get_default_state():
         "status": "MONITORING",
         "message": "🛡️ Monitoring Voice Audio...",
         "prob_fake": 0.0,
-        "prob_real": 1.0,
+        "prob_real": 0.0,
         "is_fake": False,
         "logs": []
     }
@@ -68,12 +68,12 @@ def adb_stream_thread():
                     usb_state["status"] = "MONITORING"
                     usb_state["message"] = "🛡️ Monitoring Voice Audio..."
                     usb_state["prob_fake"] = 0.0
-                    usb_state["prob_real"] = 1.0
+                    usb_state["prob_real"] = 0.0
                     usb_state["is_fake"] = False
                 elif "[USB_CABLE_STREAM]" in line_str or "ALERT:" in line_str or "status=" in line_str:
                     timestamp = time.strftime("%H:%M:%S")
 
-                    if "DEEPFAKE" in line_str or "ALERT:DEEPFAKE" in line_str or "status=FAKE" in line_str:
+                    if "DEEPFAKE" in line_str or "ALERT:DEEPFAKE" in line_str or "status=FAKE" in line_str or "status=DEEPFAKE" in line_str:
                         pct = 99.3
                         # Extract exact percentage if present
                         match = re.search(r'([\d\.]+)%', line_str)
@@ -489,7 +489,7 @@ HTML_TEMPLATE = """
                     </div>
                     <div class="metric-box">
                         <div class="metric-label">Real Voice Confidence</div>
-                        <div class="metric-val" id="realProbVal" style="color: var(--success);">100.0%</div>
+                        <div class="metric-val" id="realProbVal" style="color: var(--success);">0.0%</div>
                     </div>
                     <div class="metric-box">
                         <div class="metric-label">Connection Mode</div>
@@ -619,7 +619,7 @@ HTML_TEMPLATE = """
                 data: {
                     labels: ['Real Human Voice', 'AI Deepfake Voice'],
                     datasets: [{
-                        data: [100, 0],
+                        data: [0, 0],
                         backgroundColor: ['rgba(16, 185, 129, 0.85)', 'rgba(244, 63, 94, 0.85)'],
                         borderColor: ['#10b981', '#f43f5e'],
                         borderWidth: 2,
@@ -747,7 +747,7 @@ HTML_TEMPLATE = """
             }
         }
 
-        setInterval(pollUsbStatus, 500);
+        setInterval(pollUsbStatus, 400);
     </script>
 </body>
 </html>
@@ -763,7 +763,7 @@ def reset_state():
     usb_state["status"] = "MONITORING"
     usb_state["message"] = "🛡️ Monitoring Voice Audio..."
     usb_state["prob_fake"] = 0.0
-    usb_state["prob_real"] = 1.0
+    usb_state["prob_real"] = 0.0
     usb_state["is_fake"] = False
     usb_state["logs"] = []
     return jsonify({"status": "reset"})
@@ -771,12 +771,12 @@ def reset_state():
 @app.route("/usb_status")
 def usb_status():
     global usb_state
-    # Freshness Timeout: If no new event in last 6 seconds, revert to MONITORING state (0% Fake)
+    # Freshness Timeout: If no new event in last 6 seconds, revert to MONITORING state (0.0% Fake & 0.0% Real)
     if time.time() - usb_state.get("last_update", 0) > 6.0:
         usb_state["status"] = "MONITORING"
         usb_state["message"] = "🛡️ Monitoring Voice Audio..."
         usb_state["prob_fake"] = 0.0
-        usb_state["prob_real"] = 1.0
+        usb_state["prob_real"] = 0.0
         usb_state["is_fake"] = False
 
     return jsonify(usb_state)

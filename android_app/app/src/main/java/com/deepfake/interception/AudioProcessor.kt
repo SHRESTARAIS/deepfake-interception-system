@@ -30,7 +30,7 @@ class AudioProcessor(
     private val chunkSize = 8000 // 1 second at 8kHz
 
     private val historyBuffer = ArrayList<Float>()
-    private val historySize = 3 // 3-second sliding window
+    private val historySize = 2 // 2-second fast sliding window
 
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
         Log.e("DeepfakeInterceptor", "Background coroutine exception caught safely: ${throwable.message}")
@@ -49,7 +49,7 @@ class AudioProcessor(
             while (isActive && isRecording) {
                 try {
                     if (audioRecord == null || audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
-                        delay(200)
+                        delay(150)
                         initializeAudioRecord()
                         continue
                     }
@@ -68,8 +68,8 @@ class AudioProcessor(
                             readSize += read
                         } else {
                             errorCount++
-                            delay(40)
-                            if (errorCount > 8) {
+                            delay(30)
+                            if (errorCount > 6) {
                                 try {
                                     audioRecord?.stop()
                                     audioRecord?.release()
@@ -100,11 +100,11 @@ class AudioProcessor(
                             }
                         }
 
-                        // 2. Active Voiced Speech Activity Gating (maxAbs >= 0.003f)
-                        if (maxAbs >= 0.003f) {
-                            // Peak normalization if signal is low volume
-                            if (maxAbs < 0.12f && maxAbs > 0.0f) {
-                                val scaleFactor = 0.12f / maxAbs
+                        // 2. Classify ALL audio frames with maxAbs >= 0.0001f (Instant detection on all call audio!)
+                        if (maxAbs >= 0.0001f) {
+                            // Peak normalization to standard 0.15f amplitude for optimal ONNX classification
+                            if (maxAbs > 0.0f) {
+                                val scaleFactor = 0.15f / maxAbs
                                 for (i in 0 until chunkSize) {
                                     floatChunk[i] *= scaleFactor
                                 }
@@ -126,15 +126,17 @@ class AudioProcessor(
                                 fakeLogit = rawResult.fakeLogit
                             )
 
+                            val verdict = if (avgFakeInWindow > 0.50f) "DEEPFAKE" else "REAL"
+                            Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] status=$verdict, probFake=$avgFakeInWindow, maxAbs=$maxAbs")
                             Log.d("DeepfakeInterceptor", "Speech Frame -> maxAbs: $maxAbs | RawFake: $rawFake | AvgFake: $avgFakeInWindow")
                             onResult(windowResult)
                         } else {
-                            // Silence / Ambient Room Noise
+                            // Complete Digital Zero Silence
                             onResult(null)
                         }
                     }
                 } catch (e: Throwable) {
-                    delay(200)
+                    delay(150)
                 }
             }
         }
