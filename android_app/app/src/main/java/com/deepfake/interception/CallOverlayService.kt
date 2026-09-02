@@ -36,31 +36,39 @@ class CallOverlayService : Service() {
             classifier = DeepfakeClassifier(this)
             setupOverlayWindow()
 
+            var lastVerdictTime = 0L
+            var lastText = "🛡️ Monitoring Voice Audio..."
+            var lastBgColor = Color.parseColor("#1976D2")
+
             audioProcessor = AudioProcessor(classifier) { result ->
+                val currentTime = System.currentTimeMillis()
+
                 if (result == null) {
-                    updateOverlayUI(
-                        text = "🛡️ Monitoring Voice Audio...",
-                        backgroundColor = Color.parseColor("#1976D2") // BLUE
-                    )
-                    Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] STATUS:MONITORING:Monitoring Voice Audio...")
+                    // Hold last Green/Red verdict for 2.5s during pauses between words to prevent flickering
+                    if (currentTime - lastVerdictTime > 2500L) {
+                        updateOverlayUI(
+                            text = "🛡️ Monitoring Voice Audio...",
+                            backgroundColor = Color.parseColor("#1976D2") // BLUE
+                        )
+                        Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] STATUS:MONITORING:Monitoring Voice Audio...")
+                    }
                 } else {
+                    lastVerdictTime = currentTime
                     val probFake = result.probFake
                     val percentage = (probFake * 100).toInt()
 
                     if (probFake > 0.50f) {
                         val alertMsg = "🚨 WARNING: SUSPECTED DEEPFAKE VOICE ($percentage%)"
-                        updateOverlayUI(
-                            text = alertMsg,
-                            backgroundColor = Color.parseColor("#D32F2F") // RED
-                        )
+                        lastText = alertMsg
+                        lastBgColor = Color.parseColor("#D32F2F") // RED
+                        updateOverlayUI(text = alertMsg, backgroundColor = lastBgColor)
                         Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] ALERT:DEEPFAKE:$percentage:$alertMsg")
                     } else {
                         val realPct = 100 - percentage
                         val okMsg = "🛡️ REAL HUMAN VOICE VERIFIED ($realPct%)"
-                        updateOverlayUI(
-                            text = okMsg,
-                            backgroundColor = Color.parseColor("#388E3C") // GREEN
-                        )
+                        lastText = okMsg
+                        lastBgColor = Color.parseColor("#388E3C") // GREEN
+                        updateOverlayUI(text = okMsg, backgroundColor = lastBgColor)
                         Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] ALERT:REAL:$realPct:$okMsg")
                     }
                 }
