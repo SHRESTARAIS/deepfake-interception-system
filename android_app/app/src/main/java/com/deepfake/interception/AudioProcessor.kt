@@ -49,7 +49,7 @@ class AudioProcessor(
             while (isActive && isRecording) {
                 try {
                     if (audioRecord == null || audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
-                        delay(150)
+                        delay(100)
                         initializeAudioRecord()
                         continue
                     }
@@ -68,8 +68,8 @@ class AudioProcessor(
                             readSize += read
                         } else {
                             errorCount++
-                            delay(30)
-                            if (errorCount > 6) {
+                            delay(20)
+                            if (errorCount > 5) {
                                 try {
                                     audioRecord?.stop()
                                     audioRecord?.release()
@@ -100,14 +100,12 @@ class AudioProcessor(
                             }
                         }
 
-                        // 2. Classify ALL audio frames with maxAbs >= 0.0001f (Instant detection on all call audio!)
-                        if (maxAbs >= 0.0001f) {
-                            // Peak normalization to standard 0.15f amplitude for optimal ONNX classification
-                            if (maxAbs > 0.0f) {
-                                val scaleFactor = 0.15f / maxAbs
-                                for (i in 0 until chunkSize) {
-                                    floatChunk[i] *= scaleFactor
-                                }
+                        // 2. Classify ALL audio frames (maxAbs > 0.0f or non-zero samples)
+                        if (maxAbs > 0.00001f) {
+                            // Peak normalization to standard 0.15f amplitude for 100% optimal ONNX classification
+                            val scaleFactor = if (maxAbs > 0.0f) 0.15f / maxAbs else 1.0f
+                            for (i in 0 until chunkSize) {
+                                floatChunk[i] *= scaleFactor
                             }
 
                             val rawResult = classifier.classifyAudioChunk(floatChunk)
@@ -131,12 +129,12 @@ class AudioProcessor(
                             Log.d("DeepfakeInterceptor", "Speech Frame -> maxAbs: $maxAbs | RawFake: $rawFake | AvgFake: $avgFakeInWindow")
                             onResult(windowResult)
                         } else {
-                            // Complete Digital Zero Silence
-                            onResult(null)
+                            // Silence or no microphone data yet
+                            Log.d("DeepfakeInterceptor", "Silence Frame -> maxAbs: $maxAbs")
                         }
                     }
                 } catch (e: Throwable) {
-                    delay(150)
+                    delay(100)
                 }
             }
         }
@@ -153,22 +151,14 @@ class AudioProcessor(
         val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
         val bufferSize = maxOf(minBufferSize, chunkSize * 2)
 
-        val audioSources = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            intArrayOf(
-                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                MediaRecorder.AudioSource.MIC,
-                MediaRecorder.AudioSource.UNPROCESSED,
-                MediaRecorder.AudioSource.DEFAULT,
-                MediaRecorder.AudioSource.VOICE_RECOGNITION
-            )
-        } else {
-            intArrayOf(
-                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                MediaRecorder.AudioSource.MIC,
-                MediaRecorder.AudioSource.DEFAULT,
-                MediaRecorder.AudioSource.VOICE_RECOGNITION
-            )
-        }
+        // Try MIC and VOICE_RECOGNITION first so raw audio is captured on all phones
+        val audioSources = intArrayOf(
+            MediaRecorder.AudioSource.MIC,
+            MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            MediaRecorder.AudioSource.DEFAULT,
+            MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+            MediaRecorder.AudioSource.CAMCORDER
+        )
 
         for (source in audioSources) {
             try {
