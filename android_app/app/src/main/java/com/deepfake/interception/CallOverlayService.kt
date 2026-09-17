@@ -6,46 +6,48 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.os.Build
 import android.os.IBinder
-import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 
 class CallOverlayService : Service() {
 
-    private lateinit var windowManager: WindowManager
-    private var overlayView: View? = null
+    private var windowManager: WindowManager? = null
+    private var overlayContainer: LinearLayout? = null
     private var statusTextView: TextView? = null
 
     private lateinit var classifier: DeepfakeClassifier
     private lateinit var audioProcessor: AudioProcessor
 
+    override fun onBind(intent: Intent?): IBinder? = null
+
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
-        startForegroundNotification("🛡️ Monitoring Voice Audio...")
+        Log.i("DeepfakeInterceptor", "CallOverlayService created")
+        startForegroundServiceNotification()
 
         try {
             classifier = DeepfakeClassifier(this)
             setupOverlayWindow()
 
             var lastVerdictTime = 0L
-            var currentVerdict = "MONITORING" // "MONITORING", "REAL", "DEEPFAKE"
 
             audioProcessor = AudioProcessor(classifier) { result ->
                 val currentTime = System.currentTimeMillis()
 
                 if (result == null) {
-                    // Hold last Green/Red verdict for 3.0s during pauses between words to prevent flickering
-                    if (currentTime - lastVerdictTime > 3000L) {
-                        currentVerdict = "MONITORING"
+                    // Revert to MONITORING after 2.5s of complete silence
+                    if (currentTime - lastVerdictTime > 2500L) {
                         updateOverlayUI(
                             text = "🛡️ Monitoring Voice Audio...",
                             backgroundColor = Color.parseColor("#1976D2") // BLUE
@@ -57,23 +59,8 @@ class CallOverlayService : Service() {
                     val probFake = result.probFake
                     val percentage = (probFake * 100).toInt()
 
-                    // Hysteresis State Machine Logic for Zero Fluctuation:
-                    // 1. If currently REAL: Only flip to DEEPFAKE if probFake > 0.60f (60%)
-                    // 2. If currently DEEPFAKE: Only flip to REAL if probFake < 0.35f (35%)
-                    if (currentVerdict == "DEEPFAKE") {
-                        if (probFake < 0.35f) {
-                            currentVerdict = "REAL"
-                        }
-                    } else if (currentVerdict == "REAL") {
-                        if (probFake > 0.60f) {
-                            currentVerdict = "DEEPFAKE"
-                        }
-                    } else {
-                        // Initial transition from MONITORING
-                        currentVerdict = if (probFake > 0.50f) "DEEPFAKE" else "REAL"
-                    }
-
-                    if (currentVerdict == "DEEPFAKE") {
+                    // Clean 50% threshold on 3-frame median filtered probability
+                    if (probFake > 0.50f) {
                         val alertMsg = "🚨 WARNING: SUSPECTED DEEPFAKE VOICE ($percentage%)"
                         updateOverlayUI(text = alertMsg, backgroundColor = Color.parseColor("#D32F2F")) // RED
                         Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] ALERT:DEEPFAKE:$percentage:$alertMsg")
@@ -88,121 +75,106 @@ class CallOverlayService : Service() {
 
             audioProcessor.startListening()
         } catch (t: Throwable) {
-            Log.e("DeepfakeInterceptor", "CallOverlayService onCreate Exception: ${t.message}")
+            Log.e("DeepfakeInterceptor", "Error initializing CallOverlayService: ${t.message}")
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForegroundNotification("🛡️ Active In-Call Deepfake Interception")
-        if (overlayView == null) {
-            setupOverlayWindow()
-        }
         return START_STICKY
     }
 
-    private fun startForegroundNotification(text: String) {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                startForeground(
-                    1001,
-                    createNotification(text),
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                )
-            } else {
-                startForeground(1001, createNotification(text))
-            }
-        } catch (e: Exception) {
-            Log.e("DeepfakeInterceptor", "startForeground Exception: ${e.message}")
+    private fun startForegroundServiceNotification() {
+        val channelId = "deepfake_interceptor_channel"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Deepfake Call Protection",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+
+        val notification: Notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("Deepfake Voice Interceptor Active")
+            .setContentText("Monitoring live in-call audio for deepfake interception...")
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        if (Build.VERSION.SDK_INT >= 34) { // Android 14
+            startForeground(1001, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+        } else {
+            startForeground(1001, notification)
         }
     }
 
     private fun setupOverlayWindow() {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-                Log.w("DeepfakeInterceptor", "Overlay permission missing, skipping addView to avoid crash")
-                return
-            }
+        windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-            windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
 
-            val windowType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else
-                WindowManager.LayoutParams.TYPE_PHONE
-
-            val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            layoutType,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            y = 80 // Position near top of screen over call header
+        }
 
-            val params = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                windowType,
-                flags,
-                PixelFormat.TRANSLUCENT
-            ).apply {
-                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                y = 80 // Positioned at top of screen over WhatsApp/Phone call header
-            }
+        // Create overlay container programmatically with rounded feel
+        overlayContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(32, 24, 32, 24)
+            setBackgroundColor(Color.parseColor("#1976D2")) // Default BLUE
+        }
 
-            val textView = TextView(this).apply {
-                text = "🛡️ Monitoring Voice Audio..."
-                setTextColor(Color.WHITE)
-                textSize = 16f
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                setPadding(36, 28, 36, 28)
-                setBackgroundColor(Color.parseColor("#1976D2")) // BLUE
-                gravity = Gravity.CENTER
-            }
+        statusTextView = TextView(this).apply {
+            text = "🛡️ Monitoring Voice Audio..."
+            setTextColor(Color.WHITE)
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+        }
 
-            statusTextView = textView
-            overlayView = textView
-            windowManager.addView(overlayView, params)
-            Log.i("DeepfakeInterceptor", "Overlay window added successfully to screen top!")
+        overlayContainer?.addView(statusTextView)
+
+        try {
+            windowManager?.addView(overlayContainer, params)
         } catch (e: Exception) {
-            Log.e("DeepfakeInterceptor", "Error adding overlay window: ${e.message}")
+            Log.e("DeepfakeInterceptor", "Failed to add overlay window: ${e.message}")
         }
     }
 
     private fun updateOverlayUI(text: String, backgroundColor: Int) {
         statusTextView?.post {
             statusTextView?.text = text
-            statusTextView?.setBackgroundColor(backgroundColor)
+            overlayContainer?.setBackgroundColor(backgroundColor)
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        audioProcessor.stopListening()
-        classifier.close()
-        if (overlayView != null) {
+        Log.i("DeepfakeInterceptor", "CallOverlayService destroyed")
+        try {
+            audioProcessor.stopListening()
+        } catch (e: Exception) {}
+
+        if (overlayContainer != null) {
             try {
-                windowManager.removeView(overlayView)
+                windowManager?.removeView(overlayContainer)
             } catch (e: Exception) {}
         }
-    }
-
-    override fun onBind(intent: Intent?): IBinder? = null
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "DEEPFAKE_CHANNEL",
-                "Deepfake Interception",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
-        }
-    }
-
-    private fun createNotification(content: String): Notification {
-        return NotificationCompat.Builder(this, "DEEPFAKE_CHANNEL")
-            .setContentTitle("Deepfake Interceptor Active")
-            .setContentText(content)
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
     }
 }
