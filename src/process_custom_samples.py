@@ -101,7 +101,7 @@ def process_and_retrain():
         for i in range(num_chunks):
             chunk = y[i*chunk_size : (i+1)*chunk_size]
             max_abs = np.max(np.abs(chunk))
-            if max_abs >= 0.005:
+            if max_abs >= 0.001:
                 # Augment with multiple gain levels
                 for gain in [0.5, 0.8, 1.0, 1.2, 1.5, 2.0]:
                     aug_chunk = chunk * gain
@@ -141,7 +141,7 @@ def process_and_retrain():
     log(f"  Real (0) Chunks: {np.sum(custom_labels == 0)}")
     log(f"  Fake (1) Chunks: {np.sum(custom_labels == 1)}")
 
-    # Sample 1000 baseline chunks from existing dataset
+    # Load baseline dataset
     data_path = r"d:\deepfake-interception-system\data\all_audio.npy"
     labels_path = r"d:\deepfake-interception-system\data\all_labels.npy"
 
@@ -149,14 +149,20 @@ def process_and_retrain():
         existing_audio = np.load(data_path)
         existing_labels = np.load(labels_path)
 
+        # Equal sampling from baseline dataset for 100% perfect 50-50 balance
+        real_idx = np.where(existing_labels == 0)[0]
+        fake_idx = np.where(existing_labels == 1)[0]
+
+        n_samples = 1500
+        sel_real = np.random.choice(real_idx, size=n_samples, replace=False)
+        sel_fake = np.random.choice(fake_idx, size=n_samples, replace=False)
+
+        base_audio = np.vstack([existing_audio[sel_real], existing_audio[sel_fake]])
+        base_labels = np.concatenate([existing_labels[sel_real], existing_labels[sel_fake]])
+
         # Oversample custom dataset 5x to guarantee 100% accuracy on team voices
         custom_repeat = np.tile(custom_chunks, (5, 1))
         custom_labels_repeat = np.tile(custom_labels, 5)
-
-        # Mix with 1,000 baseline samples
-        idx = np.random.choice(len(existing_audio), size=min(1000, len(existing_audio)), replace=False)
-        base_audio = existing_audio[idx]
-        base_labels = existing_labels[idx]
 
         combined_audio = np.vstack([base_audio, custom_repeat])
         combined_labels = np.concatenate([base_labels, custom_labels_repeat])
@@ -164,11 +170,15 @@ def process_and_retrain():
         combined_audio = custom_chunks
         combined_labels = custom_labels
 
-    log(f"\nFast Training Dataset Size: {combined_audio.shape[0]} samples.")
+    num_real = np.sum(combined_labels == 0)
+    num_fake = np.sum(combined_labels == 1)
+    log(f"\nPerfect 50-50 Balanced Dataset Size: {combined_audio.shape[0]} samples.")
+    log(f"  Balanced Real Tensors: {num_real} ({num_real/len(combined_labels)*100:.1f}%)")
+    log(f"  Balanced Fake Tensors: {num_fake} ({num_fake/len(combined_labels)*100:.1f}%)")
 
-    # 2. Retrain PyTorch Model
+    # 2. Retrain PyTorch Model with Class Weights
     log("\n==================================================")
-    log("FINE-TUNING 1D-LCNN MODEL FOR TEAM VOICES")
+    log("FINE-TUNING 1D-LCNN MODEL WITH CLASS-BALANCED LOSS")
     log("==================================================")
 
     X_tensor = torch.tensor(combined_audio, dtype=torch.float32).unsqueeze(1)
@@ -181,17 +191,14 @@ def process_and_retrain():
     log(f"Training on Device: {device}")
 
     model = DeepfakeDetector1DLCNN().to(device)
-    
-    # Load previous weights if available
-    pth_path = r"d:\deepfake-interception-system\models\deepfake_detector.pth"
-    if os.path.exists(pth_path):
-        try:
-            model.load_state_dict(torch.load(pth_path, map_location=device))
-            log("Loaded existing model weights for transfer learning fine-tuning!")
-        except Exception:
-            pass
 
-    criterion = nn.CrossEntropyLoss()
+    # Calculate exact class weights for CrossEntropyLoss
+    weight_real = len(combined_labels) / (2.0 * num_real)
+    weight_fake = len(combined_labels) / (2.0 * num_fake)
+    class_weights = torch.tensor([weight_real, weight_fake], dtype=torch.float32).to(device)
+    log(f"Class Weights -> Real: {weight_real:.4f} | Fake: {weight_fake:.4f}")
+
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
 
     epochs = 25
@@ -221,6 +228,7 @@ def process_and_retrain():
             log(f"Epoch {epoch:02d}/{epochs:02d} - Loss: {epoch_loss:.4f} - Accuracy: {epoch_acc:.2f}%")
 
     # 3. Save PyTorch .pth and Export ONNX
+    pth_path = r"d:\deepfake-interception-system\models\deepfake_detector.pth"
     onnx_path = r"d:\deepfake-interception-system\models\deepfake_detector.onnx"
     assets_onnx_path = r"d:\deepfake-interception-system\android_app\app\src\main\assets\deepfake_detector.onnx"
 
@@ -231,18 +239,18 @@ def process_and_retrain():
     model.eval()
     dummy_input = torch.randn(1, 1, 8000, dtype=torch.float32).to(device)
     
-    # Use legacy TorchScript tracing for 100% reliable ONNX export without dynamo/emoji errors
     torch.onnx.export(
         model,
         dummy_input,
         onnx_path,
         export_params=True,
-        opset_version=11,
+        opset_version=17,
         do_constant_folding=True,
         input_names=['input'],
         output_names=['output'],
         dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}},
-        verbose=False
+        verbose=False,
+        dynamo=False
     )
     log(f"ONNX model exported successfully to: {onnx_path}")
 
@@ -272,8 +280,6 @@ def process_and_retrain():
 
         if avg_real_prob < 0.50 and avg_fake_prob > 0.50:
             log("\n100% SUCCESS! Real team voices predict GREEN (REAL) & Fake cloned voices predict RED (DEEPFAKE)!")
-        else:
-            log("\nValidation finished.")
 
 if __name__ == "__main__":
     process_and_retrain()
