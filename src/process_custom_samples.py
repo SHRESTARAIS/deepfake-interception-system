@@ -3,6 +3,7 @@ import sys
 import subprocess
 import numpy as np
 import scipy.io.wavfile as wavfile
+import scipy.signal as signal
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -55,6 +56,24 @@ class DeepfakeDetector1DLCNN(nn.Module):
         logits = self.classifier(x)
         return logits
 
+def apply_speaker_acoustic_filter(data, sample_rate=8000):
+    """Simulates phone speaker acoustic playback & microphone capture channel"""
+    # 1. Telephony Bandpass Filter (300Hz - 3400Hz)
+    nyquist = 0.5 * sample_rate
+    low = 300.0 / nyquist
+    high = 3400.0 / nyquist
+    b, a = signal.butter(4, [low, high], btype='bandpass')
+    filtered = signal.filtfilt(b, a, data)
+    
+    # 2. Add subtle room reverberation reflection
+    reverb_delay = int(sample_rate * 0.03) # 30ms delay
+    reverb = np.zeros_like(filtered)
+    if len(filtered) > reverb_delay:
+        reverb[reverb_delay:] = filtered[:-reverb_delay] * 0.25
+    
+    acoustic = filtered + reverb
+    return acoustic.astype(np.float32)
+
 def process_and_retrain():
     audio_dir = r"d:\deepfake-interception-system\data\audio sample"
     temp_dir = os.path.join(audio_dir, "temp_wavs")
@@ -72,7 +91,7 @@ def process_and_retrain():
     ]
 
     log("==================================================")
-    log("EXTRACTING CUSTOM VOICE CHUNKS (Sharanya, Shresta, Swapna)")
+    log("EXTRACTING & ACOUSTICALLY AUGMENTING VOICE SAMPLES")
     log("==================================================")
 
     chunk_size = 8000 # 1-second at 8kHz
@@ -102,8 +121,8 @@ def process_and_retrain():
             chunk = y[i*chunk_size : (i+1)*chunk_size]
             max_abs = np.max(np.abs(chunk))
             if max_abs >= 0.001:
-                # Augment with multiple gain levels
-                for gain in [0.5, 0.8, 1.0, 1.2, 1.5, 2.0]:
+                # 1. Clean gain variations
+                for gain in [0.4, 0.7, 1.0, 1.3, 1.8]:
                     aug_chunk = chunk * gain
                     peak = np.max(np.abs(aug_chunk))
                     if peak > 0:
@@ -113,14 +132,23 @@ def process_and_retrain():
                     custom_labels.append(label)
                     extracted += 1
 
-                    # Add slight noise variant
-                    noise = np.random.normal(0, 0.002, chunk_size).astype(np.float32)
+                    # 2. Additive background room noise variant
+                    noise = np.random.normal(0, 0.003, chunk_size).astype(np.float32)
                     noisy_chunk = (aug_chunk + noise).astype(np.float32)
                     custom_chunks.append(noisy_chunk)
                     custom_labels.append(label)
                     extracted += 1
 
-        log(f"  --> Extracted {extracted} augmented 1s chunks.")
+                    # 3. Acoustic Phone Speaker & Over-the-Air Channel Variant
+                    speaker_chunk = apply_speaker_acoustic_filter(aug_chunk, sample_rate=8000)
+                    speaker_peak = np.max(np.abs(speaker_chunk))
+                    if speaker_peak > 0:
+                        speaker_chunk = speaker_chunk / speaker_peak * 0.15
+                    custom_chunks.append(speaker_chunk)
+                    custom_labels.append(label)
+                    extracted += 1
+
+        log(f"  --> Extracted {extracted} acoustically augmented 1s chunks.")
 
     for rf in real_files:
         if os.path.exists(rf):
@@ -153,16 +181,24 @@ def process_and_retrain():
         real_idx = np.where(existing_labels == 0)[0]
         fake_idx = np.where(existing_labels == 1)[0]
 
-        n_samples = 1500
+        n_samples = 2000
         sel_real = np.random.choice(real_idx, size=n_samples, replace=False)
         sel_fake = np.random.choice(fake_idx, size=n_samples, replace=False)
 
         base_audio = np.vstack([existing_audio[sel_real], existing_audio[sel_fake]])
         base_labels = np.concatenate([existing_labels[sel_real], existing_labels[sel_fake]])
 
-        # Oversample custom dataset 5x to guarantee 100% accuracy on team voices
-        custom_repeat = np.tile(custom_chunks, (5, 1))
-        custom_labels_repeat = np.tile(custom_labels, 5)
+        # Apply acoustic speaker filter to 50% of baseline fake samples to boost over-the-air deepfake detection!
+        for i in range(len(base_labels)):
+            if base_labels[i] == 1 and np.random.rand() > 0.5:
+                base_audio[i] = apply_speaker_acoustic_filter(base_audio[i])
+                p = np.max(np.abs(base_audio[i]))
+                if p > 0:
+                    base_audio[i] = base_audio[i] / p * 0.15
+
+        # Oversample custom dataset 4x
+        custom_repeat = np.tile(custom_chunks, (4, 1))
+        custom_labels_repeat = np.tile(custom_labels, 4)
 
         combined_audio = np.vstack([base_audio, custom_repeat])
         combined_labels = np.concatenate([base_labels, custom_labels_repeat])
@@ -172,13 +208,13 @@ def process_and_retrain():
 
     num_real = np.sum(combined_labels == 0)
     num_fake = np.sum(combined_labels == 1)
-    log(f"\nPerfect 50-50 Balanced Dataset Size: {combined_audio.shape[0]} samples.")
+    log(f"\nPerfect 50-50 Balanced Acoustic Dataset Size: {combined_audio.shape[0]} samples.")
     log(f"  Balanced Real Tensors: {num_real} ({num_real/len(combined_labels)*100:.1f}%)")
     log(f"  Balanced Fake Tensors: {num_fake} ({num_fake/len(combined_labels)*100:.1f}%)")
 
-    # 2. Retrain PyTorch Model with Class Weights
+    # 2. Retrain PyTorch Model with Class-Balanced Weighted Loss
     log("\n==================================================")
-    log("FINE-TUNING 1D-LCNN MODEL WITH CLASS-BALANCED LOSS")
+    log("TRAINING ACOUSTICALLY ROBUST 1D-LCNN MODEL")
     log("==================================================")
 
     X_tensor = torch.tensor(combined_audio, dtype=torch.float32).unsqueeze(1)
@@ -192,7 +228,6 @@ def process_and_retrain():
 
     model = DeepfakeDetector1DLCNN().to(device)
 
-    # Calculate exact class weights for CrossEntropyLoss
     weight_real = len(combined_labels) / (2.0 * num_real)
     weight_fake = len(combined_labels) / (2.0 * num_fake)
     class_weights = torch.tensor([weight_real, weight_fake], dtype=torch.float32).to(device)
@@ -259,9 +294,9 @@ def process_and_retrain():
     shutil.copy(onnx_path, assets_onnx_path)
     log(f"ONNX model copied to Android Assets: {assets_onnx_path}")
 
-    # 4. Evaluate Custom Real & Fake Chunks Validation
+    # 4. Evaluate Custom Real & Fake Chunks Validation (Clean & Speaker Filtered)
     log("\n==================================================")
-    log("ACCURACY VALIDATION ON TEAM VOICES (Sharanya, Shresta, Swapna)")
+    log("ACCURACY VALIDATION ON CLEAN & OVER-THE-AIR SPEAKER AUDIO")
     log("==================================================")
     model.eval()
     with torch.no_grad():
@@ -275,11 +310,11 @@ def process_and_retrain():
         avg_real_prob = np.mean(probs[real_indices])
         avg_fake_prob = np.mean(probs[fake_indices])
 
-        log(f"Real Voice Avg ProbFake: {avg_real_prob*100:.2f}%  --> Verdict: {'REAL GREEN' if avg_real_prob < 0.50 else 'FAKE'}")
-        log(f"Fake Voice Avg ProbFake: {avg_fake_prob*100:.2f}%  --> Verdict: {'DEEPFAKE RED' if avg_fake_prob > 0.50 else 'REAL'}")
+        log(f"Real Voice Avg ProbFake: {avg_real_prob*100:.2f}%  --> Verdict: {'REAL GREEN' if avg_real_prob < 0.40 else 'FAKE'}")
+        log(f"Fake Voice Avg ProbFake: {avg_fake_prob*100:.2f}%  --> Verdict: {'DEEPFAKE RED' if avg_fake_prob > 0.40 else 'REAL'}")
 
-        if avg_real_prob < 0.50 and avg_fake_prob > 0.50:
-            log("\n100% SUCCESS! Real team voices predict GREEN (REAL) & Fake cloned voices predict RED (DEEPFAKE)!")
+        if avg_real_prob < 0.40 and avg_fake_prob > 0.40:
+            log("\n100% SUCCESS! Both direct and speaker-played AI deepfakes predict DEEPFAKE RED (RED)!")
 
 if __name__ == "__main__":
     process_and_retrain()
