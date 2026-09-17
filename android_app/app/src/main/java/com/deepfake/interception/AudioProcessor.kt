@@ -30,7 +30,8 @@ class AudioProcessor(
     private val chunkSize = 8000 // 1 second at 8kHz
 
     private val historyBuffer = ArrayList<Float>()
-    private val historySize = 2 // 2-second fast sliding window
+    private val historySize = 5 // 5-second smooth moving window
+    private var smoothedProbFake = -1.0f
 
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
         Log.e("DeepfakeInterceptor", "Background coroutine exception caught safely: ${throwable.message}")
@@ -39,6 +40,7 @@ class AudioProcessor(
     @SuppressLint("MissingPermission")
     fun startListening() {
         historyBuffer.clear()
+        smoothedProbFake = -1.0f
         isRecording = true
         initializeAudioRecord()
 
@@ -100,9 +102,9 @@ class AudioProcessor(
                             }
                         }
 
-                        // 2. Classify ALL audio frames (maxAbs > 0.0f or non-zero samples)
-                        if (maxAbs > 0.00001f) {
-                            // Peak normalization to standard 0.15f amplitude for 100% optimal ONNX classification
+                        // 2. Classify audio frames when speech or sound energy is present
+                        if (maxAbs > 0.0001f) {
+                            // Peak normalization to standard 0.15f amplitude
                             val scaleFactor = if (maxAbs > 0.0f) 0.15f / maxAbs else 1.0f
                             for (i in 0 until chunkSize) {
                                 floatChunk[i] *= scaleFactor
@@ -111,7 +113,14 @@ class AudioProcessor(
                             val rawResult = classifier.classifyAudioChunk(floatChunk)
                             val rawFake = rawResult.probFake
 
-                            historyBuffer.add(rawFake)
+                            // Exponential Moving Average (EMA) smoothing: alpha = 0.35
+                            if (smoothedProbFake < 0.0f) {
+                                smoothedProbFake = rawFake
+                            } else {
+                                smoothedProbFake = 0.35f * rawFake + 0.65f * smoothedProbFake
+                            }
+
+                            historyBuffer.add(smoothedProbFake)
                             if (historyBuffer.size > historySize) {
                                 historyBuffer.removeAt(0)
                             }
@@ -126,10 +135,10 @@ class AudioProcessor(
 
                             val verdict = if (avgFakeInWindow > 0.50f) "DEEPFAKE" else "REAL"
                             Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] status=$verdict, probFake=$avgFakeInWindow, maxAbs=$maxAbs")
-                            Log.d("DeepfakeInterceptor", "Speech Frame -> maxAbs: $maxAbs | RawFake: $rawFake | AvgFake: $avgFakeInWindow")
+                            Log.d("DeepfakeInterceptor", "Speech Frame -> maxAbs: $maxAbs | Raw: $rawFake | Smoothed: $avgFakeInWindow")
                             onResult(windowResult)
                         } else {
-                            // Silence or no microphone data yet
+                            // Room silence
                             Log.d("DeepfakeInterceptor", "Silence Frame -> maxAbs: $maxAbs")
                         }
                     }
@@ -151,7 +160,6 @@ class AudioProcessor(
         val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
         val bufferSize = maxOf(minBufferSize, chunkSize * 2)
 
-        // Try MIC and VOICE_RECOGNITION first so raw audio is captured on all phones
         val audioSources = intArrayOf(
             MediaRecorder.AudioSource.MIC,
             MediaRecorder.AudioSource.VOICE_RECOGNITION,
@@ -187,5 +195,6 @@ class AudioProcessor(
         } catch (e: Exception) {}
         audioRecord = null
         historyBuffer.clear()
+        smoothedProbFake = -1.0f
     }
 }

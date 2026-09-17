@@ -37,15 +37,15 @@ class CallOverlayService : Service() {
             setupOverlayWindow()
 
             var lastVerdictTime = 0L
-            var lastText = "🛡️ Monitoring Voice Audio..."
-            var lastBgColor = Color.parseColor("#1976D2")
+            var currentVerdict = "MONITORING" // "MONITORING", "REAL", "DEEPFAKE"
 
             audioProcessor = AudioProcessor(classifier) { result ->
                 val currentTime = System.currentTimeMillis()
 
                 if (result == null) {
-                    // Hold last Green/Red verdict for 2.5s during pauses between words to prevent flickering
-                    if (currentTime - lastVerdictTime > 2500L) {
+                    // Hold last Green/Red verdict for 3.0s during pauses between words to prevent flickering
+                    if (currentTime - lastVerdictTime > 3000L) {
+                        currentVerdict = "MONITORING"
                         updateOverlayUI(
                             text = "🛡️ Monitoring Voice Audio...",
                             backgroundColor = Color.parseColor("#1976D2") // BLUE
@@ -57,18 +57,30 @@ class CallOverlayService : Service() {
                     val probFake = result.probFake
                     val percentage = (probFake * 100).toInt()
 
-                    if (probFake > 0.50f) {
+                    // Hysteresis State Machine Logic for Zero Fluctuation:
+                    // 1. If currently REAL: Only flip to DEEPFAKE if probFake > 0.60f (60%)
+                    // 2. If currently DEEPFAKE: Only flip to REAL if probFake < 0.35f (35%)
+                    if (currentVerdict == "DEEPFAKE") {
+                        if (probFake < 0.35f) {
+                            currentVerdict = "REAL"
+                        }
+                    } else if (currentVerdict == "REAL") {
+                        if (probFake > 0.60f) {
+                            currentVerdict = "DEEPFAKE"
+                        }
+                    } else {
+                        // Initial transition from MONITORING
+                        currentVerdict = if (probFake > 0.50f) "DEEPFAKE" else "REAL"
+                    }
+
+                    if (currentVerdict == "DEEPFAKE") {
                         val alertMsg = "🚨 WARNING: SUSPECTED DEEPFAKE VOICE ($percentage%)"
-                        lastText = alertMsg
-                        lastBgColor = Color.parseColor("#D32F2F") // RED
-                        updateOverlayUI(text = alertMsg, backgroundColor = lastBgColor)
+                        updateOverlayUI(text = alertMsg, backgroundColor = Color.parseColor("#D32F2F")) // RED
                         Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] ALERT:DEEPFAKE:$percentage:$alertMsg")
                     } else {
                         val realPct = 100 - percentage
                         val okMsg = "🛡️ REAL HUMAN VOICE VERIFIED ($realPct%)"
-                        lastText = okMsg
-                        lastBgColor = Color.parseColor("#388E3C") // GREEN
-                        updateOverlayUI(text = okMsg, backgroundColor = lastBgColor)
+                        updateOverlayUI(text = okMsg, backgroundColor = Color.parseColor("#388E3C")) // GREEN
                         Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] ALERT:REAL:$realPct:$okMsg")
                     }
                 }
