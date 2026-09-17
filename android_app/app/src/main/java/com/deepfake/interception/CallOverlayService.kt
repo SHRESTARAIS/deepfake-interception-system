@@ -19,6 +19,7 @@ import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
+import com.deepfake.interception.R
 
 class CallOverlayService : Service() {
 
@@ -46,8 +47,8 @@ class CallOverlayService : Service() {
                 val currentTime = System.currentTimeMillis()
 
                 if (result == null) {
-                    // Revert to MONITORING after 2.5s of complete silence
-                    if (currentTime - lastVerdictTime > 2500L) {
+                    // Revert to MONITORING when background room silence or static noise is detected
+                    if (currentTime - lastVerdictTime > 1500L) {
                         updateOverlayUI(
                             text = "🛡️ Monitoring Voice Audio...",
                             backgroundColor = Color.parseColor("#1976D2") // BLUE
@@ -59,8 +60,8 @@ class CallOverlayService : Service() {
                     val probFake = result.probFake
                     val percentage = (probFake * 100).toInt()
 
-                    // Clean 50% threshold on 3-frame median filtered probability
-                    if (probFake > 0.50f) {
+                    // Calibrated 60% threshold for telephony speech stream classification
+                    if (probFake > 0.60f) {
                         val alertMsg = "🚨 WARNING: SUSPECTED DEEPFAKE VOICE ($percentage%)"
                         updateOverlayUI(text = alertMsg, backgroundColor = Color.parseColor("#D32F2F")) // RED
                         Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] ALERT:DEEPFAKE:$percentage:$alertMsg")
@@ -132,7 +133,6 @@ class CallOverlayService : Service() {
             y = 80 // Position near top of screen over call header
         }
 
-        // Create overlay container programmatically with rounded feel
         overlayContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
