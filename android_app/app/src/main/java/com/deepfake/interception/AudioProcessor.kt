@@ -30,7 +30,7 @@ class AudioProcessor(
     private val chunkSize = 8000 // 1 second at 8kHz
 
     private val historyBuffer = ArrayList<Float>()
-    private val historySize = 3 // 3-frame median window
+    private val historySize = 3 // 3-frame median window for rock-solid stability
 
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
         Log.e("DeepfakeInterceptor", "Background coroutine exception caught safely: ${throwable.message}")
@@ -68,8 +68,8 @@ class AudioProcessor(
                             readSize += read
                         } else {
                             errorCount++
-                            delay(20)
-                            if (errorCount > 5) {
+                            delay(50)
+                            if (errorCount > 15) {
                                 try {
                                     audioRecord?.stop()
                                     audioRecord?.release()
@@ -100,10 +100,10 @@ class AudioProcessor(
                             }
                         }
 
-                        // 2. True Active Speech Gate: maxAbs >= 0.004f (filters out static noise & room silence)
-                        if (maxAbs >= 0.004f) {
-                            // Peak normalization to standard 0.15f amplitude
-                            val scaleFactor = if (maxAbs > 0.0f) 0.15f / maxAbs else 1.0f
+                        // 2. Classify audio frames when speech audio is present
+                        if (maxAbs >= 0.0012f) {
+                            // Peak normalization capped at 15.0x max gain to avoid amplifying background noise
+                            val scaleFactor = (0.15f / maxAbs).coerceIn(0.5f, 15.0f)
                             for (i in 0 until chunkSize) {
                                 floatChunk[i] *= scaleFactor
                             }
@@ -116,24 +116,36 @@ class AudioProcessor(
                                 historyBuffer.removeAt(0)
                             }
 
-                            // Calculate 3-frame Median value for noise-free stability
+                            // 3-frame median probability for rock-solid discrimination
                             val sortedList = historyBuffer.sorted()
-                            val medianFake = sortedList[sortedList.size / 2]
+                            val avgFakeInWindow = sortedList[sortedList.size / 2]
 
                             val windowResult = DeepfakeClassifier.ClassificationResult(
-                                probFake = medianFake,
+                                probFake = avgFakeInWindow,
                                 realLogit = rawResult.realLogit,
                                 fakeLogit = rawResult.fakeLogit
                             )
 
-                            val verdict = if (medianFake > 0.60f) "DEEPFAKE" else "REAL"
-                            Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] status=$verdict, probFake=$medianFake, maxAbs=$maxAbs")
-                            Log.d("DeepfakeInterceptor", "Speech Frame -> maxAbs: $maxAbs | Raw: $rawFake | Median: $medianFake")
+                            val verdict = if (avgFakeInWindow > 0.50f) "DEEPFAKE" else "REAL"
+                            Log.i("DeepfakeInterceptor", "[USB_CABLE_STREAM] status=$verdict, probFake=$avgFakeInWindow, maxAbs=$maxAbs")
+                            Log.d("DeepfakeInterceptor", "Speech Frame -> maxAbs: $maxAbs | Raw: $rawFake | Median: $avgFakeInWindow")
                             onResult(windowResult)
                         } else {
-                            // Room silence or static line noise -> Revert to Monitoring (null)
-                            Log.d("DeepfakeInterceptor", "Silence/Noise Frame -> maxAbs: $maxAbs")
-                            onResult(null)
+                            // Inter-word pause: If history has predictions, hold the last median verdict to prevent flickering!
+                            if (historyBuffer.isNotEmpty()) {
+                                val sortedList = historyBuffer.sorted()
+                                val avgFakeInWindow = sortedList[sortedList.size / 2]
+                                val windowResult = DeepfakeClassifier.ClassificationResult(
+                                    probFake = avgFakeInWindow,
+                                    realLogit = 0.0f,
+                                    fakeLogit = 0.0f
+                                )
+                                Log.d("DeepfakeInterceptor", "Pause Frame -> Holding Median Verdict: $avgFakeInWindow")
+                                onResult(windowResult)
+                            } else {
+                                Log.d("DeepfakeInterceptor", "Silence Frame -> maxAbs: $maxAbs")
+                                onResult(null)
+                            }
                         }
                     }
                 } catch (e: Throwable) {
@@ -154,13 +166,12 @@ class AudioProcessor(
         val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
         val bufferSize = maxOf(minBufferSize, chunkSize * 2)
 
-        // Try VOICE_COMMUNICATION and VOICE_RECOGNITION first for in-call telephony audio streams
+        // Prioritize MIC and VOICE_RECOGNITION for raw unfiltered PCM capture across all devices
         val audioSources = intArrayOf(
-            MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-            MediaRecorder.AudioSource.VOICE_RECOGNITION,
             MediaRecorder.AudioSource.MIC,
-            MediaRecorder.AudioSource.DEFAULT,
-            MediaRecorder.AudioSource.CAMCORDER
+            MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+            MediaRecorder.AudioSource.DEFAULT
         )
 
         for (source in audioSources) {

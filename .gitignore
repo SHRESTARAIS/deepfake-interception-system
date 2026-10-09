@@ -68,3 +68,6 @@ outputs/
 *.log
 data_contents.txt
 python
+scratch/
+temp_*.wav
+*.wav
