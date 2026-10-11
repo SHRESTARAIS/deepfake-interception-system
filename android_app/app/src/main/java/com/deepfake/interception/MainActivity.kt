@@ -120,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val shieldSubLabel = TextView(this).apply {
-            text = "1D-LCNN Core Engine Online\n99.54% Accuracy Â· 0.39% EER"
+            text = "1D-LCNN Core Engine Online\nOn-Device ONNX Runtime - 100% Offline"
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             setTextColor(colSubText)
             gravity = Gravity.CENTER

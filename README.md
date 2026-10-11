@@ -6,10 +6,8 @@
 [![Platform](https://img.shields.io/badge/Platform-Android%207.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#)
 [![Language](https://img.shields.io/badge/Language-Kotlin%20%7C%20Python-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](#)
 [![AI Runtime](https://img.shields.io/badge/AI%20Engine-ONNX%20Runtime%20C%2B%2B-005CED?style=for-the-badge&logo=onnx&logoColor=white)](#)
-[![Model Footprint](https://img.shields.io/badge/Model%20Size-67.9%20KB-success?style=for-the-badge)](#)
-[![Latency](https://img.shields.io/badge/Latency-%3C%2025ms-orange?style=for-the-badge)](#)
-[![Accuracy](https://img.shields.io/badge/Accuracy-99.54%25-brightgreen?style=for-the-badge)](#)
-[![EER](https://img.shields.io/badge/EER-0.39%25-blue?style=for-the-badge)](#)
+[![Model Footprint](https://img.shields.io/badge/Model%20Size-~128%20KB-success?style=for-the-badge)](#)
+[![Latency](https://img.shields.io/badge/Latency-~0.5ms%20per%20sec%20of%20audio-orange?style=for-the-badge)](#)
 [![Edge Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline%20Edge--AI-red?style=for-the-badge)](#)
 
 <p align="center">
@@ -20,7 +18,7 @@
   <img src="assets/screenshots/linkedin_featured_banner.jpg" width="880" alt="Aegis Voice System Showcase" />
 </p>
 
-[Key Innovations](#-key-innovations--salient-features) • [Production Screenshots](#-production-screenshots--in-call-walkthrough) • [System Architecture](#-system-architecture--pipeline) • [Empirical Benchmarks](#-empirical-benchmarks) • [Quickstart](#-quickstart--installation)
+[Key Innovations](#-key-innovations--salient-features) • [Production Screenshots](#-production-screenshots--in-call-walkthrough) • [System Architecture](#-system-architecture--pipeline) • [Evaluation Results](#-evaluation-results-reproducible) • [Quickstart](#-quickstart--installation)
 
 </div>
 
@@ -33,7 +31,7 @@
 | 1. Permissions Setup | 2. Protection Armed | 3. In-Call: Human Verified | 4. In-Call: Deepfake Intercepted |
 | :---: | :---: | :---: | :---: |
 | <img src="assets/screenshots/01_permissions_setup.jpg" width="220" alt="Permissions Setup" /> | <img src="assets/screenshots/02_active_protection_armed.jpg" width="220" alt="Active Protection Armed" /> | <img src="assets/screenshots/03_incall_verified_safe.jpg" width="220" alt="Live Call Verified Safe" /> | <img src="assets/screenshots/04_incall_threat_interception.jpg" width="220" alt="Live Call Threat Intercepted" /> |
-| **Pre-Flight Configuration**<br>Status micro-cards verify Microphone, Phone State, and Overlay permissions. | **Active Protection Armed**<br>1D-LCNN engine online in RAM (`< 15 MB`), ready for incoming phone calls. | **Authentic Voice (Safe)**<br>Frosted-glass emerald pill displays `Voice Verified — Real Human (89%)`. | **Threat Interception (Mitigate)**<br>Crimson banner (`99% Fake`), cheek haptics + **Mute Call** & **Drop Call** actions. |
+| **Pre-Flight Configuration**<br>Status micro-cards verify Microphone, Phone State, and Overlay permissions. | **Active Protection Armed**<br>1D-LCNN engine loaded on-device, ready for incoming phone calls. | **Authentic Voice (Safe)**<br>Frosted-glass emerald pill displays `Voice Verified — Real Human (89%)`. | **Threat Interception (Mitigate)**<br>Crimson banner (`99% Fake`), cheek haptics + **Mute Call** & **Drop Call** actions. |
 
 </div>
 
@@ -50,8 +48,8 @@
 * Commercial voice models degrade drastically on cellular calls because telephony transcoding (G.711 $\mu$-law, AMR-NB) strips frequencies above $3,400\text{ Hz}$.
 * Aegis Voice trains natively on $8,000\text{ Hz}$ raw time-domain waveforms, completely bypassing expensive 2D spectrogram or Mel-filterbank transformations.
 * Utilizes **Max-Feature-Map (MFM)** non-linearities ($\text{MFM}(x) = \max(x_1, x_2)$) to isolate vocoder phase artifacts produced by state-of-the-art zero-shot speech synthesizers.
-* **Model Size:** Ultra-compressed **$67.9\text{ KB}$** ONNX binary.
-* **Execution Latency:** **$< 25\text{ ms}$** wall-clock time per 1-second audio frame.
+* **Model Size:** Compact **~128 KB** ONNX model (~30,500 parameters).
+* **Execution Latency:** about **0.5 ms** per 1-second frame on a PC CPU (re-measured); expected to stay far below a 25 ms budget on a phone (phone-side timing pending).
 
 ### 3. Three-Tier Multi-Sensory Alert Pipeline (Solving the "Phone-to-Ear" Barrier)
 During a live telephone call, the user holds the device against their cheek, making traditional visual screen notifications completely invisible. Aegis Voice solves this fundamental usability flaw with a coordinated three-tier warning mechanism:
@@ -93,7 +91,7 @@ Rather than acting solely as a passive warning banner, Aegis Voice empowers user
   │                   3. 1D-LCNN AI Classification Engine                  │
   │       Raw 1D Waveform Input ([1, 1, 8000] Tensor, No Spectrogram)      │
   │        3-Layer Conv1D + Max-Feature-Map (MFM) + Global Pooling         │
-  │              Local ONNX Runtime C++ Inference (< 25 ms)                │
+  │              Local ONNX Runtime C++ Inference (on-device)               │
   └───────────────────────────────────┬────────────────────────────────────┘
                                       │
                                       ▼
@@ -114,22 +112,23 @@ Rather than acting solely as a passive warning banner, Aegis Voice empowers user
 
 ---
 
-## 📊 Empirical Benchmarks
+## 📊 Evaluation Results (Reproducible)
 
-The system was evaluated on telephony-degraded speech combined with the ASVspoof 2019 Logical Access (LA) and DEMAND environmental noise corpora downsampled to $8\text{ kHz}$ G.711 format:
+Run `python src/verify_metrics.py` to reproduce. The shipped ONNX model (`android_app/app/src/main/assets/deepfake_detector.onnx`) was scored on the stored augmented dataset: **7,000 one-second clips (2,580 real, 4,420 fake)** from ASVspoof 2019 LA and WaveFake, all passed through G.711 mu-law, with 20% also mixed with DEMAND noise at -15 to -5 dB SNR.
 
-| Performance Metric | Measured Value | Academic Benchmark Target | Evaluation Status |
-| :--- | :---: | :---: | :---: |
-| **Classification Accuracy** | **99.54%** | $\ge 99.0\%$ | **PASSED** |
-| **Equal Error Rate (EER)** | **0.39%** | $\le 1.0\%$ | **PASSED** |
-| **Precision** | **0.9930** | $\ge 0.9900$ | **PASSED** |
-| **Recall / Sensitivity** | **0.9998** | $\ge 0.9900$ | **PASSED** |
-| **F1-Score** | **0.9964** | $\ge 0.9900$ | **PASSED** |
-| **On-Device Inference Latency** | **$< 25\text{ ms}$** | $< 30\text{ ms}$ | **PASSED** |
-| **Compiled Model Footprint** | **$67.9\text{ KB}$** | $< 100\text{ KB}$ | **PASSED** |
-| **Application RAM Overhead** | **$< 15\text{ MB}$** | $< 50\text{ MB}$ | **PASSED** |
-| **Active CPU Utilization** | **$< 5.0\%$** | $< 10.0\%$ | **PASSED** |
-| **Sensory Alert Dispatch Delay** | **$< 40\text{ ms}$** | $< 100\text{ ms}$ | **PASSED** |
+| Metric | Result |
+| :--- | :---: |
+| Accuracy | 85.01% |
+| Precision | 0.9622 |
+| Recall | 0.7939 |
+| F1-Score | 0.8700 |
+| Equal Error Rate (EER) | 18.26% |
+| Inference latency (PC CPU, per 1-second clip) | ~0.54 ms mean, 1.17 ms p95 |
+| Model file size | ~128 KB (131,107 bytes, ~30,500 parameters) |
+
+**Confusion matrix:** 2,442 real clips accepted / 138 real flagged as fake; 3,509 fakes caught / 911 fakes missed.
+
+> **Honest notes:** the final model was retrained with class balancing and phone-speaker (over-the-air) augmentation, then fine-tuned on recordings of the team's own voices. Earlier README figures (99.54% accuracy / 0.39% EER) could not be reproduced and were removed. The test uses clips from the same corpora (random split, not speaker-disjoint), so it is not an out-of-domain benchmark. Phone-side latency, RAM and CPU are pending Android Profiler measurement. The live-call demo shown above is the primary evidence of end-to-end behaviour.
 
 ---
 
@@ -144,7 +143,7 @@ deepfake-interception-system/
 │       ├── 03_incall_verified_safe.jpg       <- In-call verified authentic voice banner
 │       └── 04_incall_threat_interception.jpg <- In-call deepfake intercepted with controls
 ├── models/
-│   ├── deepfake_detector.onnx                <- 67.9 KB Telephony-Trained 1D-LCNN Binary
+│   ├── deepfake_detector.onnx                <- ~128 KB Telephony-Trained 1D-LCNN Model
 │   └── deepfake_detector.pth                 <- PyTorch Checkpoint
 ├── src/
 │   ├── 1_data_loader.py                      <- 8kHz Audio Pipeline & G.711 Transcoding
