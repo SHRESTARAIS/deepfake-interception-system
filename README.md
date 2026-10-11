@@ -196,19 +196,14 @@ deepfake-interception-system/
 
 ---
 
-## 👥 Authors & Academic Affiliation
+## 👤 Author & Lead Engineer
 
-* **Department of Computer Science and Engineering**  
-  **K.V.G. College of Engineering, Sullia (D.K), Karnataka - 574327**  
-  *(Affiliated to Visvesvaraya Technological University, Belagavi)*
-* **Project Team:**
-  * **Shresta Rai S** (Team Leader)
-  * **Swapna Havannavar**
-  * **Sharanya**
-  * **Sadhana P Shetty**
-* **Project Guide:** Prof. Naseema C. A., Assistant Professor, Dept. of CS&E
-* **Head of Department:** Dr. Balapradeep K. N., Professor & HOD, Dept. of CS&E
-* **Principal:** Dr. Suresha V., KVGCE, Sullia
+**Shresta Rai S**  
+*System Architecture, 1D-LCNN Neural Network Design, & Android Edge Implementation*  
+[![GitHub](https://img.shields.io/badge/GitHub-SHRESTARAIS-181717?style=flat&logo=github)](https://github.com/SHRESTARAIS)  
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat&logo=linkedin)](https://linkedin.com/in/shresta-rai-s)
+
+> *Developed as a B.E. Capstone Research Project under the academic guidance of Prof. Naseema C. A., Department of Computer Science & Engineering, K.V.G. College of Engineering (Affiliated to Visvesvaraya Technological University, Belagavi).*
 
 ---
 
