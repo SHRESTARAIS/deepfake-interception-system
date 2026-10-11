@@ -16,6 +16,10 @@
   <b>A production-ready Android security system that intercepts telecommunication voice cloning scams (vishing) in real-time during live cellular calls — featuring ultra-lightweight 1D-LCNN inference, tactile cheek Morse-code haptics, in-ear acoustic warnings, and single-tap call termination.</b>
 </p>
 
+<p align="center">
+  <img src="assets/screenshots/linkedin_featured_banner.jpg" width="880" alt="Aegis Voice System Showcase" />
+</p>
+
 [Key Innovations](#-key-innovations--salient-features) • [Production Screenshots](#-production-screenshots--in-call-walkthrough) • [System Architecture](#-system-architecture--pipeline) • [Empirical Benchmarks](#-empirical-benchmarks) • [Quickstart](#-quickstart--installation)
 
 </div>
