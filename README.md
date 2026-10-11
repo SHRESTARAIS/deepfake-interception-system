@@ -201,7 +201,7 @@ deepfake-interception-system/
 **Shresta Rai S**  
 *System Architecture, 1D-LCNN Neural Network Design, & Android Edge Implementation*  
 [![GitHub](https://img.shields.io/badge/GitHub-SHRESTARAIS-181717?style=flat&logo=github)](https://github.com/SHRESTARAIS)  
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat&logo=linkedin)](https://linkedin.com/in/shresta-rai-s)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat&logo=linkedin)](https://www.linkedin.com/in/shresta-rai-s-)
 
 > *Developed as a B.E. Capstone Research Project under the academic guidance of Prof. Naseema C. A., Department of Computer Science & Engineering, K.V.G. College of Engineering (Affiliated to Visvesvaraya Technological University, Belagavi).*
 
