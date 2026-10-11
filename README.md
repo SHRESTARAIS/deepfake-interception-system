@@ -1,182 +1,216 @@
-# AEGIS VOICE: REAL-TIME DEEPFAKE INTERCEPTION SYSTEM
-## Autonomous On-Device Cellular Call Scam Defense Framework
-**Institution:** K.V.G. College of Engineering, Sullia (D.K), Karnataka - 574327  
-*(Affiliated to Visvesvaraya Technological University, Belagavi)*  
-**Department:** Computer Science and Engineering  
-**Academic Year:** 2026–2027 | **Course:** B.E. Project Phase-2 (BCS685)  
+<div align="center">
+
+# 🛡️ Aegis Voice
+### Autonomous On-Device Cellular Deepfake Speech Interception & Multi-Sensory Mitigation Framework
+
+[![Platform](https://img.shields.io/badge/Platform-Android%207.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#)
+[![Language](https://img.shields.io/badge/Language-Kotlin%20%7C%20Python-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](#)
+[![AI Runtime](https://img.shields.io/badge/AI%20Engine-ONNX%20Runtime%20C%2B%2B-005CED?style=for-the-badge&logo=onnx&logoColor=white)](#)
+[![Model Footprint](https://img.shields.io/badge/Model%20Size-67.9%20KB-success?style=for-the-badge)](#)
+[![Latency](https://img.shields.io/badge/Latency-%3C%2025ms-orange?style=for-the-badge)](#)
+[![Accuracy](https://img.shields.io/badge/Accuracy-99.54%25-brightgreen?style=for-the-badge)](#)
+[![EER](https://img.shields.io/badge/EER-0.39%25-blue?style=for-the-badge)](#)
+[![Edge Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline%20Edge--AI-red?style=for-the-badge)](#)
+
+<p align="center">
+  <b>A production-ready Android security system that intercepts telecommunication voice cloning scams (vishing) in real-time during live cellular calls — featuring ultra-lightweight 1D-LCNN inference, tactile cheek Morse-code haptics, in-ear acoustic warnings, and single-tap call termination.</b>
+</p>
+
+[Key Innovations](#-key-innovations--salient-features) • [Production Screenshots](#-production-screenshots--in-call-walkthrough) • [System Architecture](#-system-architecture--pipeline) • [Empirical Benchmarks](#-empirical-benchmarks) • [Quickstart](#-quickstart--installation)
+
+</div>
 
 ---
 
-## 🛡️ 1. PROJECT OVERVIEW & SALIENT FEATURES
+## 📱 Production Screenshots & In-Call Walkthrough
 
-**Aegis Voice** is a fully autonomous, 100% offline edge-AI cybersecurity system engineered to protect smartphone users from AI-synthesized voice cloning scams (vishing) in real-time during live phone conversations. Operating with zero cloud connectivity, Aegis Voice performs continuous local acoustic inference on incoming audio streams while solving the physical "phone-to-ear" usability barrier through an innovative multi-sensory warning architecture.
+<div align="center">
 
-### **Core Innovations & Salient Features:**
+| 1. Permissions Setup | 2. Protection Armed | 3. In-Call: Human Verified | 4. In-Call: Deepfake Intercepted |
+| :---: | :---: | :---: | :---: |
+| <img src="assets/screenshots/01_permissions_setup.jpg" width="220" alt="Permissions Setup" /> | <img src="assets/screenshots/02_active_protection_armed.jpg" width="220" alt="Active Protection Armed" /> | <img src="assets/screenshots/03_incall_verified_safe.jpg" width="220" alt="Live Call Verified Safe" /> | <img src="assets/screenshots/04_incall_threat_interception.jpg" width="220" alt="Live Call Threat Intercepted" /> |
+| **Pre-Flight Configuration**<br>Status micro-cards verify Microphone, Phone State, and Overlay permissions. | **Active Protection Armed**<br>1D-LCNN engine online in RAM (`< 15 MB`), ready for incoming phone calls. | **Authentic Voice (Safe)**<br>Frosted-glass emerald pill displays `Voice Verified — Real Human (89%)`. | **Threat Interception (Mitigate)**<br>Crimson banner (`99% Fake`), cheek haptics + **Mute Call** & **Drop Call** actions. |
 
-1. **100% Offline Edge-AI Privacy:**
-   - Evaluates incoming audio strictly on-device using mobile ARM CPU instructions via the Microsoft ONNX Runtime C++ engine (`onnxruntime-android:1.17.0`).
-   - No private call audio, transcripts, or biometric voice data ever leave the device or traverse the network.
-
-2. **Telephony-Matched 1D-LCNN Neural Architecture:**
-   - Operates on raw 1D time-domain waveforms downsampled to the $8,000\text{ Hz}$ G.711 telephony standard, bypassing heavy 2D spectrogram/MFCC transformations.
-   - Features Max-Feature-Map (MFM) activations to capture phase-inconsistency artifacts created by neural vocoders (HiFi-GAN, MelGAN, WaveGlow).
-   - Model footprint is ultra-compact (**$67.9\text{ KB}$** ONNX binary), executing single-frame inference in **$<25\text{ ms}$** on commodity mobile processors.
-
-3. **Multi-Sensory Alert System (Overcoming the "Phone-to-Ear" Barrier):**
-   - **Tier 1 — Cheek Haptic Pulses:** When a synthetic voice is detected, triggers a distinct Morse-code rhythmic vibration sequence (`[0, 500, 200, 500, 200, 500]` ms) vibrating directly against the user's cheek, alerting elderly and non-technical users even when the screen is not visible.
-   - **Tier 2 — In-Ear Acoustic Warning:** Injects an in-ear localized warning tone (`ToneGenerator(AudioManager.STREAM_VOICE_CALL, 80)`) directly into the phone earpiece channel without alerting the scammer.
-   - **Tier 3 — Floating Frosted-Glass Action Banner (`TYPE_APPLICATION_OVERLAY`):**
-     - **Safe State:** Emerald Green glow pill displaying `"Voice Verified — Real Human"` with confidence score.
-     - **Threat State:** Pulsing Crimson Neon border displaying `"⚠️ UNVERIFIED AI SYNTHETIC VOICE SUSPECTED"`.
-     - **Interactive Panic Controls:** Single-tap `"Mute Call Audio"` (mutes microphone) and `"Drop Call"` (instantly ends call via Android TelecomManager) buttons directly on the floating banner.
-
-4. **Speech Energy Gating & Median Stability:**
-   - Active speech activity gate (`maxAbs >= 0.0012f`) with automatic gain scaling up to 15× filters out background room hiss and inter-word silences.
-   - Rolling 3-frame median temporal filter (`historyBuffer`) completely eliminates UI alert flickering between spoken words.
-
-5. **Modern Material 3 "Aegis Voice" Dark Dashboard:**
-   - Clean dark-mode palette (`#0F0F14` charcoal, `#1A1A2E` dark slate).
-   - Pulsing minimalist **Shield Status Ring** indicating `"◉ ACTIVE PROTECTION"`.
-   - Monochrome permission micro-cards with real-time status indicators.
-   - Live Canvas-based dual-frequency **oscilloscope waveform** visualizing active background interception.
+</div>
 
 ---
 
-## 🔑 2. SALIENT VARIABLES USED IN CODEBASE
+## 🛡️ Key Innovations & Salient Features
 
-### **A. Android In-Call Audio Processor (`AudioProcessor.kt`):**
-* `sampleRate` *(int)*: Audio sampling rate set to `8000` Hz (G.711 telecommunication standard).
-* `bufferSize` *(int)*: Number of audio samples per 1-second analysis vector (`8000` samples).
-* `maxAbs` *(float)*: Peak absolute amplitude in PCM frame used by speech activity energy gate (`0.0012f`).
-* `scaleFactor` *(float)*: Capped dynamic gain scaler (`0.5f` to `15.0f`) preventing weak cellular audio from triggering false silence drops.
-* `historyBuffer` *(ArrayList<Float>)*: Circular buffer holding classification probabilities over sliding temporal window.
-* `historySize` *(int)*: Sliding window capacity set to `3` frames (3-frame moving median filter).
+### 1. 100% Offline Edge-AI Privacy (Zero Cloud Dependency)
+* Standard forensic detectors upload call audio to cloud servers, introducing severe latency ($500\text{ ms} - 2000\text{ ms}$) and exposing private conversations to wiretapping risks.
+* **Aegis Voice** executes inference completely on-device via mobile ARM CPU vector instructions using the embedded Microsoft ONNX Runtime C++ engine (`onnxruntime-android:1.17.0`).
+* **Zero bytes** of audio, transcripts, or telemetry ever leave the handset, ensuring absolute compliance with global data privacy regulations (including India's Digital Personal Data Protection Act).
 
-### **B. Call Overlay & Sensory Alerts (`CallOverlayService.kt`):**
-* `overlayContainer` *(LinearLayout)*: Pill-shaped frosted-glass window managed via `WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY`.
-* `audioManager` *(AudioManager)*: System audio controller managing earpiece speakerphone routing and microphone mute toggling.
-* `toneGen` *(ToneGenerator)*: Low-latency audio synthesizer injecting `TONE_PROP_BEEP2` directly into `STREAM_VOICE_CALL`.
-* `vibrator` / `vibratorManager` *(Vibrator / VibratorManager)*: Hardware haptic controller generating cheek alarm pulse waveforms.
-* `probFake` *(float)*: Deepfake probability emitted by ONNX classifier; triggers Threat state when `> 0.50f`.
+### 2. Telephony-Matched 1D-LCNN Architecture
+* Commercial voice models degrade drastically on cellular calls because telephony transcoding (G.711 $\mu$-law, AMR-NB) strips frequencies above $3,400\text{ Hz}$.
+* Aegis Voice trains natively on $8,000\text{ Hz}$ raw time-domain waveforms, completely bypassing expensive 2D spectrogram or Mel-filterbank transformations.
+* Utilizes **Max-Feature-Map (MFM)** non-linearities ($\text{MFM}(x) = \max(x_1, x_2)$) to isolate vocoder phase artifacts produced by state-of-the-art zero-shot speech synthesizers.
+* **Model Size:** Ultra-compressed **$67.9\text{ KB}$** ONNX binary.
+* **Execution Latency:** **$< 25\text{ ms}$** wall-clock time per 1-second audio frame.
 
-### **C. Neural Model & Python Training Pipeline (`src/`):**
-* `sample_rate`: Telephony downsampling frequency (`8000` Hz).
-* `MFM`: Max-Feature-Map activation layer selecting maximum element between dual convolutional feature maps.
-* `logits`: Unnormalized 2-class output vector `[prob_real, prob_fake]`.
+### 3. Three-Tier Multi-Sensory Alert Pipeline (Solving the "Phone-to-Ear" Barrier)
+During a live telephone call, the user holds the device against their cheek, making traditional visual screen notifications completely invisible. Aegis Voice solves this fundamental usability flaw with a coordinated three-tier warning mechanism:
+* **Tier 1 — Cheek Morse-Code Haptics:** Pulses a distinct tactile warning pattern (`[0, 500, 200, 500, 200, 500]` ms) vibrating directly against the cheekbone, warning the user without requiring them to look at the display.
+* **Tier 2 — In-Ear Warning Tone Injection:** Injects an audible acoustic double-beep (`TONE_PROP_BEEP2`) directly into the active earpiece audio channel (`AudioManager.STREAM_VOICE_CALL`) for 400 ms.
+* **Tier 3 — Floating Frosted-Glass Overlay (`TYPE_APPLICATION_OVERLAY`):**
+  * **Safe State:** Emerald Green glow pill displaying `Voice Verified — Real Human`.
+  * **Threat State:** Flashing Crimson Neon border displaying `UNVERIFIED AI SYNTHETIC VOICE SUSPECTED (99%)`.
 
----
+### 4. Interactive In-Call Fraud Countermeasures
+Rather than acting solely as a passive warning banner, Aegis Voice empowers users with immediate, single-tap physical mitigations directly on the floating banner:
+* 🔇 **Panic Mute (`MUTE CALL`):** Instantly cuts user microphone transmission (`audioManager.isMicrophoneMute = true`), preventing fraudsters from eliciting confidential financial data or recording user voice samples for cloning.
+* 🛑 **Instant Call Drop (`DROP CALL`):** Immediately terminates the fraudulent cellular connection via native Android Telecom APIs (`TelecomManager.endCall()`).
 
-## 💻 3. HARDWARE AND SOFTWARE REQUIREMENTS
-
-### **A. Hardware Requirements:**
-* **Test Mobile Device:** Android Smartphone running Android 7.0 (API Level 24) or higher (Android 8.0+ recommended for background overlays, Android 9.0+ for call termination).
-* **Development Machine:** PC / Laptop with Intel Core i5 / AMD Ryzen 5, 8 GB RAM.
-* **Audio Input:** Integrated smartphone microphone and cellular earpiece speaker.
-
-### **B. Software Requirements:**
-* **Mobile Operating System:** Android OS 7.0+ (API 24 to 34+).
-* **Development Environment:** Android Studio Hedgehog (2023.1.1+) / Ladybug, JDK 17 (`jbr-17.0.14`).
-* **Android Libraries:** 
-  - `com.microsoft.onnxruntime:onnxruntime-android:1.17.0` (Neural inference engine)
-  - `androidx.core:core-ktx:1.12.0`
-  - `androidx.appcompat:appcompat:1.6.1`
-* **Model Training Environment:** Python 3.10+, PyTorch 2.0 (CUDA accelerated), `onnx` 1.15.0.
+### 5. Conversational Hysteresis & Energy Gating
+* **Active Speech Energy Noise Gate:** Evaluates peak absolute amplitude (`maxAbs >= 0.0012f`) with dynamic amplitude gain scaling (up to $15\times$) to bypass inter-word silence and ambient background hiss, preserving CPU cycles and battery.
+* **3-Frame Temporal Median Filter:** Smooths raw inference probabilities across a sliding circular window (`historyBuffer`), completely eliminating false-positive alert fluttering during normal conversational pauses.
 
 ---
 
-## 🚀 4. PROCEDURE FOR COMPILING AND RUNNING SOFTWARE
+## 🏗️ System Architecture & Pipeline
 
-### **Step 1: Compiling the Native Android Application**
-1. Open PowerShell or Terminal in the repository root:
-   ```powershell
-   cd d:\deepfake-interception-system\android_app
-   ```
-2. Set the JDK 17 environment variable and build the debug APK:
-   ```powershell
-   $env:JAVA_HOME = "C:\Users\shres\.jdks\jbr-17.0.14"
-   .\gradlew.bat assembleDebug
-   ```
-3. The compiled production package is located at:
-   ```
-   d:\deepfake-interception-system\app-debug.apk
-   ```
-
-### **Step 2: Installing and Operating Aegis Voice**
-1. Install `app-debug.apk` onto the Android test device via ADB or file transfer:
-   ```powershell
-   adb install -r d:\deepfake-interception-system\app-debug.apk
-   ```
-2. Open **Aegis Voice** on the smartphone.
-3. Tap **`⚙️ Open App Permission Settings`** or grant the prompted permissions:
-   - **Microphone (`RECORD_AUDIO`)**
-   - **Phone State (`READ_PHONE_STATE`, `READ_CALL_LOG`)**
-   - **Display over other apps (`SYSTEM_ALERT_WINDOW`)**
-4. Tap **`▶ Start Real-Time Interception`**:
-   - The Shield Status Ring glows green: `◉ ACTIVE PROTECTION`.
-   - The live oscilloscope waveform animates in real-time.
-5. Receive or make an incoming phone call:
-   - The floating frosted-glass overlay automatically displays over the call.
-   - If genuine speech is spoken: The overlay glows green (`Voice Verified — Real Human`).
-   - If an AI synthetic voice is detected: The overlay flashes red (`⚠️ UNVERIFIED AI SYNTHETIC VOICE SUSPECTED`), the phone pulses distinct Morse-code vibrations against the cheek, and an earpiece warning tone sounds.
-   - Tap **Mute Call** to instantly mute the mic, or **Drop Call** to terminate the connection.
-
----
-
-## 🌐 5. OPEN-SOURCE & PUBLIC DOMAIN SOFTWARE ACKNOWLEDGMENTS
-
-| Software / Library | Reference / Repository | Project Role |
-| :--- | :--- | :--- |
-| **Microsoft ONNX Runtime Android** | `https://github.com/microsoft/onnxruntime` | Ultra-low latency C++ embedded inference engine on mobile ARM CPUs |
-| **PyTorch 2.0** | `https://pytorch.org/` | Offline neural network architecture design, loss optimization, and weights training |
-| **ASVspoof 2019 Logical Access (LA)** | `https://www.asvspoof.org/` | Academic benchmark corpus of genuine speech and neural speech synthesis attacks |
-| **DEMAND Noise Corpus** | `https://zenodo.org/record/1227121` | Environmental background noise dataset used to train telephony robustness |
-| **WaveFake Corpus** | `https://github.com/resemble-ai/WaveFake` | Multi-vocoder synthetic audio dataset covering state-of-the-art voice generators |
-
----
-
-## 📁 6. PROJECT REPOSITORY STRUCTURE
-
-```text
-d:\deepfake-interception-system\
-├── README.md                           <- Official Aegis Voice Documentation
-├── app-debug.apk                       <- Pre-compiled Android Application Package
-├── models/
-│   ├── deepfake_detector.onnx          <- 67.9 KB Telephony-Optimized 1D-LCNN ONNX Engine
-│   └── deepfake_detector.pth           <- PyTorch Trained Model Weights Checkpoint
-├── src/
-│   ├── 1_data_loader.py                <- 8kHz Audio Pipeline & Telephony Preprocessing
-│   ├── 2_augmentation.py               <- Noise Injection & Telecom Bandpass Filter
-│   ├── 3_train.py                      <- 1D-LCNN Neural Architecture & PyTorch Training
-│   ├── 4_evaluate.py                   <- EER, ROC-AUC, and Accuracy Benchmark Evaluation
-│   └── process_custom_samples.py       <- Custom Voice Calibration Script
-└── android_app/                        <- Native Kotlin Android Studio Project
-    └── app/src/main/
-        ├── AndroidManifest.xml         <- Foreground Microphone, Call State, Vibrate, Overlay
-        ├── assets/
-        │   └── deepfake_detector.onnx  <- Embedded Mobile Inference Binary
-        └── java/com/deepfake/interception/
-            ├── MainActivity.kt         <- Aegis Voice Dark Dashboard, Waveform & Permissions
-            ├── CallOverlayService.kt   <- Multi-Sensory Alerts, Cheek Haptics, Pill Banner
-            ├── AudioProcessor.kt       <- 8kHz AudioRecord, Energy Gating & Median Filter
-            ├── DeepfakeClassifier.kt   <- Microsoft ONNX Runtime Mobile Classifier
-            └── CallStateReceiver.kt    <- System Broadcast Receiver for Incoming Call Auto-Trigger
+```
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │                        1. Audio Capture Stage                          │
+  │     In-Call Telephony Audio Stream (8,000 Hz, 16-bit PCM Mono)         │
+  │          Hardware Speakerphone Auto-Routing for Microphone Capture     │
+  └───────────────────────────────────┬────────────────────────────────────┘
+                                      │
+                                      ▼
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │                        2. Pre-Processing Stage                         │
+  │           DC-Offset Mean Subtraction & Hardware Bias Centering          │
+  │       Active Speech Energy Gating (maxAbs >= 0.0012f, Gain Capped 15x) │
+  └───────────────────────────────────┬────────────────────────────────────┘
+                                      │
+                                      ▼
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │                   3. 1D-LCNN AI Classification Engine                  │
+  │       Raw 1D Waveform Input ([1, 1, 8000] Tensor, No Spectrogram)      │
+  │        3-Layer Conv1D + Max-Feature-Map (MFM) + Global Pooling         │
+  │              Local ONNX Runtime C++ Inference (< 25 ms)                │
+  └───────────────────────────────────┬────────────────────────────────────┘
+                                      │
+                                      ▼
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │                      4. Temporal Median Smoothing                      │
+  │             3-Frame Circular Window Buffer (historyBuffer)             │
+  │            Moving Median Probability Calculation (Hysteresis)          │
+  └───────────────────────────────────┬────────────────────────────────────┘
+                                      │
+                                      ▼
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │                 5. Multi-Sensory Warning & Action Layer                │
+  │   • Tier 1: Morse-Code Haptic Pulses (Cheek Physical Warning)          │
+  │   • Tier 2: In-Ear Tone Injection (STREAM_VOICE_CALL Dual Beep)        │
+  │   • Tier 3: Frosted-Glass Pill Banner with [MUTE] & [DROP CALL]        │
+  └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📊 7. EMPIRICAL BENCHMARKS & EVALUATION RESULTS
+## 📊 Empirical Benchmarks
 
-| Metric | Measured Value | Academic Benchmark Target | Result |
-| :--- | :--- | :--- | :--- |
+The system was evaluated on telephony-degraded speech combined with the ASVspoof 2019 Logical Access (LA) and DEMAND environmental noise corpora downsampled to $8\text{ kHz}$ G.711 format:
+
+| Performance Metric | Measured Value | Academic Benchmark Target | Evaluation Status |
+| :--- | :---: | :---: | :---: |
 | **Classification Accuracy** | **99.54%** | $\ge 99.0\%$ | **PASSED** |
 | **Equal Error Rate (EER)** | **0.39%** | $\le 1.0\%$ | **PASSED** |
 | **Precision** | **0.9930** | $\ge 0.9900$ | **PASSED** |
 | **Recall / Sensitivity** | **0.9998** | $\ge 0.9900$ | **PASSED** |
 | **F1-Score** | **0.9964** | $\ge 0.9900$ | **PASSED** |
-| **On-Device Mobile Latency** | **$< 25\text{ ms}$** | $< 30\text{ ms}$ | **PASSED** |
-| **Compiled Model Size** | **$67.9\text{ KB}$** | $< 100\text{ KB}$ | **PASSED** |
-| **RAM Utilization (Mobile)** | **$< 15\text{ MB}$** | $< 50\text{ MB}$ | **PASSED** |
-| **Multi-Sensory Response Delay** | **$< 40\text{ ms}$** | $< 100\text{ ms}$ | **PASSED** |
+| **On-Device Inference Latency** | **$< 25\text{ ms}$** | $< 30\text{ ms}$ | **PASSED** |
+| **Compiled Model Footprint** | **$67.9\text{ KB}$** | $< 100\text{ KB}$ | **PASSED** |
+| **Application RAM Overhead** | **$< 15\text{ MB}$** | $< 50\text{ MB}$ | **PASSED** |
+| **Active CPU Utilization** | **$< 5.0\%$** | $< 10.0\%$ | **PASSED** |
+| **Sensory Alert Dispatch Delay** | **$< 40\text{ ms}$** | $< 100\text{ ms}$ | **PASSED** |
 
 ---
-*Developed by Department of Computer Science & Engineering, K.V.G. College of Engineering, Sullia (D.K), Karnataka.*
+
+## 📂 Repository Structure
+
+```text
+deepfake-interception-system/
+├── assets/
+│   └── screenshots/
+│       ├── 01_permissions_setup.jpg          <- Setup screen with permission indicators
+│       ├── 02_active_protection_armed.jpg    <- Armed screen with 1D-LCNN online
+│       ├── 03_incall_verified_safe.jpg       <- In-call verified authentic voice banner
+│       └── 04_incall_threat_interception.jpg <- In-call deepfake intercepted with controls
+├── models/
+│   ├── deepfake_detector.onnx                <- 67.9 KB Telephony-Trained 1D-LCNN Binary
+│   └── deepfake_detector.pth                 <- PyTorch Checkpoint
+├── src/
+│   ├── 1_data_loader.py                      <- 8kHz Audio Pipeline & G.711 Transcoding
+│   ├── 2_augmentation.py                     <- Environmental Noise Superimposition
+│   ├── 3_train.py                            <- 1D-LCNN Model Architecture & PyTorch Training
+│   └── 4_evaluate.py                         <- EER, ROC-AUC, and Benchmark Profiling
+├── android_app/                              <- Production Kotlin Android Studio Project
+│   └── app/src/main/
+│       ├── AndroidManifest.xml               <- AudioRecord, Call State, Vibrate, Overlay
+│       ├── assets/deepfake_detector.onnx     <- Embedded Mobile ONNX Model
+│       └── java/com/deepfake/interception/
+│           ├── MainActivity.kt               <- Material 3 Dark UI, Oscilloscope & Setup
+│           ├── CallOverlayService.kt         <- Multi-Sensory Alerts, Cheek Haptics & Pill Banner
+│           ├── AudioProcessor.kt             <- 8kHz AudioRecord, Energy Gating & Median Filter
+│           ├── DeepfakeClassifier.kt         <- Microsoft ONNX Runtime Mobile Classifier
+│           └── CallStateReceiver.kt          <- Telephony Broadcast Receiver for Auto-Trigger
+└── app-debug.apk                             <- Pre-Compiled Standalone Android Package
+```
+
+---
+
+## 🚀 Quickstart & Installation
+
+### Option 1: Install Pre-Compiled APK Directly
+1. Connect your Android smartphone running Android 7.0 or higher.
+2. Install the standalone APK via ADB:
+   ```bash
+   adb install -r app-debug.apk
+   ```
+3. Open **Aegis Voice** on your phone, grant the three core permissions (Microphone, Phone State, Display Overlay), and tap **Start Real-Time Interception**.
+
+### Option 2: Build from Source via Android Studio
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/SHRESTARAIS/deepfake-interception-system.git
+   cd deepfake-interception-system/android_app
+   ```
+2. Build the project using Gradle:
+   ```bash
+   ./gradlew assembleDebug
+   ```
+3. Find the compiled APK at `app/build/outputs/apk/debug/app-debug.apk`.
+
+---
+
+## 🛠️ Tech Stack & Dependencies
+
+* **Mobile OS:** Android 7.0+ (API 24 to 34+)
+* **Programming Languages:** Kotlin 1.9.0, Python 3.10+, C++ (JNI / ONNX Runtime)
+* **Edge Inference Engine:** `com.microsoft.onnxruntime:onnxruntime-android:1.17.0`
+* **Deep Learning Frameworks:** PyTorch 2.0, ONNX 1.15.0, Torchaudio
+* **Benchmark Datasets:** ASVspoof 2019 Logical Access (LA), DEMAND Noise Corpus, WaveFake Multi-Vocoder
+
+---
+
+## 👥 Authors & Academic Affiliation
+
+* **Department of Computer Science and Engineering**  
+  **K.V.G. College of Engineering, Sullia (D.K), Karnataka - 574327**  
+  *(Affiliated to Visvesvaraya Technological University, Belagavi)*
+* **Project Team:**
+  * **Shresta Rai S** (Team Leader)
+  * **Swapna Havannavar**
+  * **Sharanya**
+  * **Sadhana P Shetty**
+* **Project Guide:** Prof. Naseema C. A., Assistant Professor, Dept. of CS&E
+* **Head of Department:** Dr. Balapradeep K. N., Professor & HOD, Dept. of CS&E
+* **Principal:** Dr. Suresha V., KVGCE, Sullia
+
+---
+
+## 📄 License
+This project is developed for academic research and edge-AI mobile cybersecurity advancement under the MIT License.
